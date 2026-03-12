@@ -29,12 +29,11 @@ export function Dashboard() {
   async function loadStats() {
     try {
       setLoading(true);
-      const [sentimentData, properties] = await Promise.all([
-        getSentimentStats(),
-        getProperties()
-      ]);
-
-      const avgSentiment = properties.reduce((sum, p) => sum + p.overall_sentiment_score, 0) / properties.length;
+      const [sentimentData, properties] = await Promise.all([getSentimentStats(), getProperties()]);
+      const avgSentiment =
+        properties.length > 0
+          ? properties.reduce((sum, property) => sum + property.overall_sentiment_score, 0) / properties.length
+          : 0;
 
       setStats({
         totalProperties: properties.length,
@@ -52,75 +51,70 @@ export function Dashboard() {
   }
 
   if (loading) {
-    return <div className="text-center py-8">Loading dashboard...</div>;
+    return <div className="text-center py-8 text-stone-600">Loading dashboard...</div>;
   }
 
   const positivePercent = stats.totalReviews > 0 ? (stats.positiveReviews / stats.totalReviews) * 100 : 0;
 
+  const cards = [
+    {
+      label: 'Total Properties',
+      value: stats.totalProperties,
+      icon: Home,
+      tone: 'text-amber-700 bg-amber-50 border-amber-200'
+    },
+    {
+      label: 'Total Reviews',
+      value: stats.totalReviews,
+      icon: MessageSquare,
+      tone: 'text-indigo-700 bg-indigo-50 border-indigo-200'
+    },
+    {
+      label: 'Positive Sentiment',
+      value: `${positivePercent.toFixed(0)}%`,
+      icon: TrendingUp,
+      tone: 'text-emerald-700 bg-emerald-50 border-emerald-200'
+    },
+    {
+      label: 'Avg Sentiment',
+      value: `${(stats.avgSentiment * 100).toFixed(0)}%`,
+      icon: BarChart3,
+      tone: 'text-orange-700 bg-orange-50 border-orange-200'
+    }
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-gray-600 text-sm font-medium">Total Properties</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalProperties}</p>
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      {cards.map((card) => {
+        const Icon = card.icon;
+        return (
+          <div key={card.label} className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-stone-600 text-sm">{card.label}</p>
+                <p className="text-3xl font-semibold mt-1 text-stone-900">{card.value}</p>
+              </div>
+              <div className={`p-3 rounded-xl border ${card.tone}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+            </div>
+            {card.label === 'Positive Sentiment' && (
+              <div className="mt-4">
+                <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
+                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${positivePercent}%` }} />
+                </div>
+              </div>
+            )}
+            {card.label === 'Avg Sentiment' && (
+              <p className="text-xs mt-4 text-stone-500">
+                <span className="text-emerald-700">{stats.positiveReviews} positive</span> ·{' '}
+                <span className="text-yellow-700">{stats.neutralReviews} neutral</span> ·{' '}
+                <span className="text-red-700">{stats.negativeReviews} negative</span>
+              </p>
+            )}
           </div>
-          <div className="bg-blue-100 p-3 rounded-full">
-            <Home className="w-6 h-6 text-blue-600" />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-gray-600 text-sm font-medium">Total Reviews</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalReviews}</p>
-          </div>
-          <div className="bg-purple-100 p-3 rounded-full">
-            <MessageSquare className="w-6 h-6 text-purple-600" />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-gray-600 text-sm font-medium">Positive Sentiment</p>
-            <p className="text-3xl font-bold text-green-600 mt-2">{positivePercent.toFixed(0)}%</p>
-          </div>
-          <div className="bg-green-100 p-3 rounded-full">
-            <TrendingUp className="w-6 h-6 text-green-600" />
-          </div>
-        </div>
-        <div className="mt-4">
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-green-500 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${positivePercent}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-gray-600 text-sm font-medium">Avg Sentiment Score</p>
-            <p className="text-3xl font-bold text-blue-600 mt-2">{(stats.avgSentiment * 100).toFixed(0)}%</p>
-          </div>
-          <div className="bg-orange-100 p-3 rounded-full">
-            <BarChart3 className="w-6 h-6 text-orange-600" />
-          </div>
-        </div>
-        <div className="mt-3 text-xs text-gray-600">
-          <span className="text-green-600 font-medium">{stats.positiveReviews} positive</span>
-          {' | '}
-          <span className="text-yellow-600 font-medium">{stats.neutralReviews} neutral</span>
-          {' | '}
-          <span className="text-red-600 font-medium">{stats.negativeReviews} negative</span>
-        </div>
-      </div>
+        );
+      })}
     </div>
   );
 }
