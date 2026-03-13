@@ -53,29 +53,28 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur">
-        <div className="w-full px-4 sm:px-6 lg:px-10 py-5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="bg-gradient-to-br from-cyan-500 to-violet-600 p-2.5 rounded-xl shadow-lg shadow-violet-950/40">
                 <Brain className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Sentiment ananlysis of real istate market</h1>
-                <p className="text-slate-300 text-sm mt-1">High-clarity real estate sentiment analytics for modern teams</p>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">Sentiment ananlysis of real istate market</h1>
+                <p className="text-stone-600 text-sm mt-1">High-clarity real estate sentiment analytics for modern teams</p>
               </div>
             </div>
             <div className="px-3 py-1.5 rounded-full border border-cyan-400/30 bg-cyan-500/10 text-cyan-200 text-xs sm:text-sm flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
-              Premium workspace view
             </div>
           </div>
         </div>
       </header>
 
-      <main className="w-full px-4 sm:px-6 lg:px-10 py-8 sm:py-10">
-        <section className="mb-8 rounded-3xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-900/60 p-6 sm:p-8 shadow-xl shadow-slate-950/35">
-          <p className="text-xs uppercase tracking-[0.2em] text-cyan-300 mb-3">Executive Dashboard</p>
-          <h2 className="text-3xl sm:text-4xl font-semibold leading-tight max-w-4xl text-white">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        <section className="mb-8 rounded-3xl border border-stone-200 bg-white p-6 sm:p-8 shadow-sm">
+          <p className="text-xs uppercase tracking-[0.2em] text-stone-500 mb-3">Executive Dashboard</p>
+          <h2 className="text-3xl sm:text-4xl font-semibold leading-tight max-w-3xl text-stone-900">
             Track property and location insights to understand portfolio coverage and market positioning faster.
           </h2>
         </section>
