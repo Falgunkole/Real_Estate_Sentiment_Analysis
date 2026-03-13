@@ -4,7 +4,6 @@ import { Dashboard } from './components/Dashboard';
 import { PropertyCard } from './components/PropertyCard';
 import { PropertyModal } from './components/PropertyModal';
 import { getProperties } from './lib/queries';
-import { hasSupabaseCredentials } from './lib/supabase';
 import type { Property } from './lib/database.types';
 
 function App() {
@@ -38,13 +37,12 @@ function App() {
                 <Brain className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">EstatePulse Intelligence</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">Sentiment ananlysis of real istate market</h1>
                 <p className="text-stone-600 text-sm mt-1">High-clarity real estate sentiment analytics for modern teams</p>
               </div>
             </div>
             <div className="px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-amber-800 text-xs sm:text-sm flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
-              {hasSupabaseCredentials ? 'Live cloud data' : 'Demo mode with curated sample data'}
             </div>
           </div>
         </div>
@@ -54,7 +52,7 @@ function App() {
         <section className="mb-8 rounded-3xl border border-stone-200 bg-white p-6 sm:p-8 shadow-sm">
           <p className="text-xs uppercase tracking-[0.2em] text-stone-500 mb-3">Executive Dashboard</p>
           <h2 className="text-3xl sm:text-4xl font-semibold leading-tight max-w-3xl text-stone-900">
-            Understand buyer emotions, detect risk areas, and make pricing and launch decisions faster.
+            Track property and location insights to understand portfolio coverage and market positioning faster.
           </h2>
         </section>
 
