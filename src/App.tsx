@@ -4,7 +4,6 @@ import { Dashboard } from './components/Dashboard';
 import { PropertyCard } from './components/PropertyCard';
 import { PropertyModal } from './components/PropertyModal';
 import { getProperties } from './lib/queries';
-import { hasSupabaseCredentials } from './lib/supabase';
 import type { Property } from './lib/database.types';
 
 function App() {
@@ -44,7 +43,6 @@ function App() {
             </div>
             <div className="px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-amber-800 text-xs sm:text-sm flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
-              {hasSupabaseCredentials ? 'Live cloud data' : 'Demo mode with curated sample data'}
             </div>
           </div>
         </div>
