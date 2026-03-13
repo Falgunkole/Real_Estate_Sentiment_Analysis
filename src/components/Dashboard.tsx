@@ -1,24 +1,20 @@
 import { useEffect, useState } from 'react';
-import { BarChart3, TrendingUp, MessageSquare, Home } from 'lucide-react';
-import { getSentimentStats, getProperties } from '../lib/queries';
+import { BarChart3, MapPin, IndianRupee, Home } from 'lucide-react';
+import { getProperties } from '../lib/queries';
 
 interface DashboardStats {
   totalProperties: number;
-  totalReviews: number;
-  positiveReviews: number;
-  negativeReviews: number;
-  neutralReviews: number;
-  avgSentiment: number;
+  uniqueLocations: number;
+  avgPrice: number;
+  avgArea: number;
 }
 
 export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalProperties: 0,
-    totalReviews: 0,
-    positiveReviews: 0,
-    negativeReviews: 0,
-    neutralReviews: 0,
-    avgSentiment: 0
+    uniqueLocations: 0,
+    avgPrice: 0,
+    avgArea: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -29,19 +25,22 @@ export function Dashboard() {
   async function loadStats() {
     try {
       setLoading(true);
-      const [sentimentData, properties] = await Promise.all([getSentimentStats(), getProperties()]);
-      const avgSentiment =
+      const properties = await getProperties();
+      const uniqueLocations = new Set(properties.map((property) => property.location)).size;
+      const avgPrice =
         properties.length > 0
-          ? properties.reduce((sum, property) => sum + property.overall_sentiment_score, 0) / properties.length
+          ? properties.reduce((sum, property) => sum + property.price, 0) / properties.length
+          : 0;
+      const avgArea =
+        properties.length > 0
+          ? properties.reduce((sum, property) => sum + property.area_sqft, 0) / properties.length
           : 0;
 
       setStats({
         totalProperties: properties.length,
-        totalReviews: sentimentData.total,
-        positiveReviews: sentimentData.positive,
-        negativeReviews: sentimentData.negative,
-        neutralReviews: sentimentData.neutral,
-        avgSentiment
+        uniqueLocations,
+        avgPrice,
+        avgArea
       });
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -54,7 +53,12 @@ export function Dashboard() {
     return <div className="text-center py-8 text-stone-600">Loading dashboard...</div>;
   }
 
-  const positivePercent = stats.totalReviews > 0 ? (stats.positiveReviews / stats.totalReviews) * 100 : 0;
+  const formatPrice = (value: number) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(value);
 
   const cards = [
     {
@@ -64,20 +68,20 @@ export function Dashboard() {
       tone: 'text-amber-700 bg-amber-50 border-amber-200'
     },
     {
-      label: 'Total Reviews',
-      value: stats.totalReviews,
-      icon: MessageSquare,
+      label: 'Locations Covered',
+      value: stats.uniqueLocations,
+      icon: MapPin,
       tone: 'text-indigo-700 bg-indigo-50 border-indigo-200'
     },
     {
-      label: 'Positive Sentiment',
-      value: `${positivePercent.toFixed(0)}%`,
-      icon: TrendingUp,
+      label: 'Average Price',
+      value: formatPrice(stats.avgPrice),
+      icon: IndianRupee,
       tone: 'text-emerald-700 bg-emerald-50 border-emerald-200'
     },
     {
-      label: 'Avg Sentiment',
-      value: `${(stats.avgSentiment * 100).toFixed(0)}%`,
+      label: 'Average Area',
+      value: `${Math.round(stats.avgArea)} sq.ft`,
       icon: BarChart3,
       tone: 'text-orange-700 bg-orange-50 border-orange-200'
     }
@@ -98,20 +102,7 @@ export function Dashboard() {
                 <Icon className="w-5 h-5" />
               </div>
             </div>
-            {card.label === 'Positive Sentiment' && (
-              <div className="mt-4">
-                <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${positivePercent}%` }} />
-                </div>
-              </div>
-            )}
-            {card.label === 'Avg Sentiment' && (
-              <p className="text-xs mt-4 text-stone-500">
-                <span className="text-emerald-700">{stats.positiveReviews} positive</span> ·{' '}
-                <span className="text-yellow-700">{stats.neutralReviews} neutral</span> ·{' '}
-                <span className="text-red-700">{stats.negativeReviews} negative</span>
-              </p>
-            )}
+            {card.label === 'Average Area' && <p className="text-xs mt-4 text-stone-500">Calculated across all listed properties.</p>}
           </div>
         );
       })}

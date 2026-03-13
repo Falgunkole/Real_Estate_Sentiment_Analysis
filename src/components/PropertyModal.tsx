@@ -21,6 +21,7 @@ export function PropertyModal({ property, onClose }: PropertyModalProps) {
         <div className="relative">
           <button
             onClick={onClose}
+            aria-label="Close property details"
             className="absolute top-4 right-4 bg-white rounded-full p-2 border border-stone-200 hover:bg-stone-100 transition-colors z-10"
           >
             <X className="w-6 h-6 text-stone-700" />
@@ -53,6 +54,15 @@ export function PropertyModal({ property, onClose }: PropertyModalProps) {
             <div className="border-t border-stone-200 pt-6">
               <h3 className="text-xl font-semibold mb-4 text-stone-900">Sentiment Analysis</h3>
               <SentimentAnalysis property={property} />
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-100 transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
