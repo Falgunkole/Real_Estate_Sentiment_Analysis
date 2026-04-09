@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BarChart3, MapPin, IndianRupee, Home } from 'lucide-react';
+import { BarChart3, Building2, IndianRupee, MapPin, Smile } from 'lucide-react';
 import { getProperties } from '../lib/queries';
 
 interface DashboardStats {
@@ -7,6 +7,7 @@ interface DashboardStats {
   uniqueLocations: number;
   avgPrice: number;
   avgArea: number;
+  avgSentimentScore: number;
 }
 
 export function Dashboard() {
@@ -14,7 +15,8 @@ export function Dashboard() {
     totalProperties: 0,
     uniqueLocations: 0,
     avgPrice: 0,
-    avgArea: 0
+    avgArea: 0,
+    avgSentimentScore: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -35,12 +37,17 @@ export function Dashboard() {
         properties.length > 0
           ? properties.reduce((sum, property) => sum + property.area_sqft, 0) / properties.length
           : 0;
+      const avgSentimentScore =
+        properties.length > 0
+          ? properties.reduce((sum, property) => sum + property.overall_sentiment_score, 0) / properties.length
+          : 0;
 
       setStats({
         totalProperties: properties.length,
         uniqueLocations,
         avgPrice,
-        avgArea
+        avgArea,
+        avgSentimentScore
       });
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -50,7 +57,7 @@ export function Dashboard() {
   }
 
   if (loading) {
-    return <div className="text-center py-8 text-stone-600">Loading dashboard...</div>;
+    return <div className="text-center py-8 text-slate-500">Loading dashboard...</div>;
   }
 
   const formatPrice = (value: number) =>
@@ -62,47 +69,58 @@ export function Dashboard() {
 
   const cards = [
     {
-      label: 'Total Properties',
+      label: 'Tracked Properties',
       value: stats.totalProperties,
-      icon: Home,
-      tone: 'text-amber-700 bg-amber-50 border-amber-200'
+      icon: Building2,
+      tone: 'text-cyan-700 bg-cyan-50 border-cyan-200',
+      note: 'Active sentiment coverage.'
     },
     {
-      label: 'Locations Covered',
+      label: 'Markets Covered',
       value: stats.uniqueLocations,
       icon: MapPin,
-      tone: 'text-indigo-700 bg-indigo-50 border-indigo-200'
+      tone: 'text-indigo-700 bg-indigo-50 border-indigo-200',
+      note: 'Distinct locations in analysis.'
     },
     {
       label: 'Average Price',
       value: formatPrice(stats.avgPrice),
       icon: IndianRupee,
-      tone: 'text-emerald-700 bg-emerald-50 border-emerald-200'
+      tone: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+      note: 'Across all tracked properties.'
+    },
+    {
+      label: 'Avg. Sentiment Score',
+      value: `${(stats.avgSentimentScore * 100).toFixed(0)}%`,
+      icon: Smile,
+      tone: 'text-violet-700 bg-violet-50 border-violet-200',
+      note: 'Overall confidence from review data.'
     },
     {
       label: 'Average Area',
       value: `${Math.round(stats.avgArea)} sq.ft`,
       icon: BarChart3,
-      tone: 'text-orange-700 bg-orange-50 border-orange-200'
+      tone: 'text-orange-700 bg-orange-50 border-orange-200',
+      note: 'Typical property size in dataset.'
     }
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         return (
-          <div key={card.label} className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+          <div key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-stone-600 text-sm">{card.label}</p>
-                <p className="text-3xl font-semibold mt-1 text-stone-900">{card.value}</p>
+                <p className="text-slate-600 text-sm">{card.label}</p>
+                <p className="text-2xl font-semibold mt-1 text-slate-900">{card.value}</p>
               </div>
               <div className={`p-3 rounded-xl border ${card.tone}`}>
                 <Icon className="w-5 h-5" />
               </div>
             </div>
-            {card.label === 'Average Area' && <p className="text-xs mt-4 text-stone-500">Calculated across all listed properties.</p>}
+            <p className="text-xs mt-4 text-slate-500">{card.note}</p>
           </div>
         );
       })}
