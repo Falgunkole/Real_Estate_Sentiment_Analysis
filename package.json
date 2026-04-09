@@ -7,6 +7,7 @@
     "dev": "vite --host 0.0.0.0 --port 4173",
     "build": "vite build",
     "lint": "eslint .",
+    "check:conflicts": "bash -lc '! rg -n \"^(<<<<<<<|=======|>>>>>>>)\" src'",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
