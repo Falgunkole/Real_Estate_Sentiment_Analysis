@@ -81,9 +81,9 @@ function App() {
 
     if (!term) return propertyInsights;
 
-    return propertyInsights.filter((insight) => {
-      return insight.property.name.toLowerCase().includes(term) || insight.property.location.toLowerCase().includes(term);
-    });
+    return propertyInsights.filter(
+      (insight) => insight.property.name.toLowerCase().includes(term) || insight.property.location.toLowerCase().includes(term)
+    );
   }, [propertyInsights, searchTerm]);
 
   const dashboardStats = useMemo(() => {
@@ -132,7 +132,12 @@ function App() {
           </div>
 
           <nav className="p-2 space-y-1">
-            <SidebarButton icon={<Home className="w-4 h-4" />} label="Dashboard" active={activePage === 'dashboard'} onClick={() => setActivePage('dashboard')} />
+            <SidebarButton
+              icon={<Home className="w-4 h-4" />}
+              label="Dashboard"
+              active={activePage === 'dashboard'}
+              onClick={() => setActivePage('dashboard')}
+            />
             <SidebarButton
               icon={<FileText className="w-4 h-4" />}
               label="All Property Listing"
