@@ -50,7 +50,7 @@ export function Dashboard() {
   }
 
   if (loading) {
-    return <div className="text-center py-8 text-stone-600">Loading dashboard...</div>;
+    return <div className="text-center py-8 text-slate-300">Loading dashboard...</div>;
   }
 
   const formatPrice = (value: number) =>
