@@ -60,9 +60,7 @@ function App() {
                 <Brain className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                  Sentiment Analysis of the Real Estate Market
-                </h1>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Sentiment Analysis of the Real Estate Market</h1>
                 <p className="text-slate-300 text-sm mt-1">High-clarity real estate sentiment analytics for modern teams</p>
               </div>
             </div>
@@ -76,7 +74,7 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
         <section className="mb-8 rounded-3xl border border-stone-200 bg-white p-6 sm:p-8 shadow-sm">
           <p className="text-xs uppercase tracking-[0.2em] text-stone-500 mb-3">Executive Dashboard</p>
-          <h2 className="max-w-3xl text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
+          <h2 className="text-3xl sm:text-4xl font-semibold leading-tight max-w-3xl text-slate-900">
             Track property and location insights to understand portfolio coverage and market positioning faster.
           </h2>
         </section>
