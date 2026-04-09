@@ -10,7 +10,7 @@ export const mockProperties: Property[] = [
     price: 48500000,
     area_sqft: 2140,
     description: 'Premium sea-facing apartments with concierge services, wellness center, and private terraces.',
-    image_url: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1600&q=80',
+    image_url: '',
     overall_sentiment_score: 0.86,
     created_at: now,
     updated_at: now
@@ -22,7 +22,7 @@ export const mockProperties: Property[] = [
     price: 22400000,
     area_sqft: 1680,
     description: 'Smart-home enabled residences near tech parks with landscaped gardens and co-working lounges.',
-    image_url: 'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1600&q=80',
+    image_url: '',
     overall_sentiment_score: 0.72,
     created_at: now,
     updated_at: now
@@ -34,7 +34,7 @@ export const mockProperties: Property[] = [
     price: 13800000,
     area_sqft: 1420,
     description: 'Community-focused project with sports facilities, EV charging, and dedicated kids activity zones.',
-    image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=80',
+    image_url: '',
     overall_sentiment_score: 0.58,
     created_at: now,
     updated_at: now

@@ -60,22 +60,23 @@ function App() {
                 <Brain className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Sentiment ananlysis of real istate market</h1>
-                <p className="text-stone-600 text-sm mt-1">High-clarity real estate sentiment analytics for modern teams</p>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Real Estate Sentiment Intelligence</h1>
+                <p className="text-slate-300 text-sm mt-1">Professional, aspect-driven analytics from property review data</p>
               </div>
             </div>
             <div className="px-3 py-1.5 rounded-full border border-cyan-400/30 bg-cyan-500/10 text-cyan-200 text-xs sm:text-sm flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
+              AI Review Insights
             </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-        <section className="mb-8 rounded-3xl border border-stone-200 bg-white p-6 sm:p-8 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.2em] text-stone-500 mb-3">Executive Dashboard</p>
-          <h2 className="text-3xl sm:text-4xl font-semibold leading-tight max-w-3xl text-white">
-            Track property and location insights to understand portfolio coverage and market positioning faster.
+        <section className="mb-8 rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-6 sm:p-8 shadow-2xl shadow-cyan-950/10">
+          <p className="text-xs uppercase tracking-[0.2em] text-cyan-300 mb-3">Executive Dashboard</p>
+          <h2 className="text-3xl sm:text-4xl font-semibold leading-tight max-w-4xl text-white">
+            Analyze property sentiment by key aspects like location, transport, utilities, and pricing to guide confident portfolio decisions.
           </h2>
         </section>
 
@@ -121,7 +122,7 @@ function App() {
 
         <div className="mb-5 flex items-center gap-2">
           <Building2 className="w-6 h-6 text-cyan-300" />
-          <h2 className="text-2xl font-bold text-white">Properties</h2>
+          <h2 className="text-2xl font-bold text-white">Property Profiles</h2>
           <span className="text-slate-400">({filteredProperties.length})</span>
         </div>
 
