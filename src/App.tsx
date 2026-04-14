@@ -113,6 +113,21 @@ function App() {
     return allReviews.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 4);
   }, [propertyInsights]);
 
+  const sentimentMix = useMemo(() => {
+    const distribution = {
+      'Very Positive': 0,
+      Positive: 0,
+      Neutral: 0,
+      Negative: 0
+    } satisfies Record<PropertyInsight['sentimentLabel'], number>;
+
+    propertyInsights.forEach((insight) => {
+      distribution[insight.sentimentLabel] += 1;
+    });
+
+    return distribution;
+  }, [propertyInsights]);
+
   return (
     <div className="min-h-screen w-full bg-stone-100 text-stone-700 selection:bg-amber-200 selection:text-stone-900 font-sans">
       <header className="sticky top-0 z-20 border-b border-stone-200 bg-stone-100/95 backdrop-blur-lg animate-fade-in">
@@ -146,80 +161,14 @@ function App() {
           </div>
         ) : (
           <div className="space-y-10">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-              <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                <StatCard icon={<LayoutGrid className="h-6 w-6 text-amber-700" />} title="Total Properties" value={dashboardStats.totalListings} />
-              </div>
-              <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                <StatCard
-                  icon={<MessageSquare className="h-6 w-6 text-emerald-700" />}
-                  title="Total Reviews Analyzed"
-                  value={dashboardStats.reviewCount}
-                />
-              </div>
-              <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
-                <StatCard icon={<Tag className="h-6 w-6 text-rose-700" />} title="Aspects Tracked" value={dashboardStats.aspectCount} />
-              </div>
-              <div className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
-                <StatCard icon={<Smile className="h-6 w-6 text-indigo-700" />} title="Global Sentiment" value={`${averageReviewScore(propertyInsights)}%`} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-              <div
-                className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm"
-                style={{ animationDelay: '0.5s' }}
-              >
-                <h3 className="mb-8 flex items-center gap-2 text-xl font-bold text-stone-900">
-                  <TrendingUp className="h-5 w-5 text-amber-700" />
-                  Property Sentiment Leaderboard
-                </h3>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-                  {topProperties.map((insight, idx) => (
-                    <button
-                      key={insight.property.id}
-                      type="button"
-                      onClick={() => setSelectedProperty(insight.property)}
-                      className="group relative overflow-hidden rounded-xl border border-stone-200 bg-stone-50 p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:border-amber-500 hover:shadow-lg hover:shadow-amber-100/80"
-                    >
-                      <div className="absolute right-4 top-3 text-xs font-semibold uppercase tracking-wider text-stone-400">Rank</div>
-                      <div className="mb-4 text-3xl font-black text-stone-200">#{idx + 1}</div>
-                      <h4 className="mb-1 text-base font-bold text-stone-900">{insight.property.name}</h4>
-                      <p className="mb-4 text-sm text-stone-500">{insight.property.location}</p>
-                      <div className="flex items-end gap-2">
-                        <span className="text-2xl font-bold text-amber-700">{Math.round(insight.property.overall_sentiment_score * 100)}%</span>
-                        <span className="text-xs uppercase tracking-wide text-stone-500">Confidence</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm" style={{ animationDelay: '0.6s' }}>
-                <h3 className="mb-6 text-xl font-bold text-stone-900">Live Review Feed</h3>
-                <div className="space-y-4">
-                  {latestReviews.map((review, i) => (
-                    <article key={i} className="rounded-lg border border-stone-200 bg-stone-50 p-4 transition-colors hover:border-amber-300">
-                      <div className="mb-2 flex items-start justify-between">
-                        <span className="text-sm font-semibold text-stone-800">{review.propertyName}</span>
-                        <div className="flex text-amber-500">
-                          {Array.from({ length: review.rating }).map((_, idx) => (
-                            <Star key={idx} className="h-3 w-3 fill-current" />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="line-clamp-2 text-sm text-stone-500">“{review.review_text}”</p>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             <section className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm" style={{ animationDelay: '0.7s' }}>
               <div className="mb-8 flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
                 <div>
                   <h3 className="text-2xl font-bold text-stone-900">Property Intelligence Directory</h3>
                   <p className="mt-1 text-stone-500">Detailed breakdown of all tracked properties.</p>
+                  <p className="mt-1 text-xs text-stone-400">
+                    Score = average sentiment from submitted reviews for each property.
+                  </p>
                 </div>
                 <div className="relative w-full sm:max-w-md">
                   <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
@@ -240,7 +189,7 @@ function App() {
                       <th className="px-6 py-4 font-semibold">Property</th>
                       <th className="px-6 py-4 font-semibold">Location</th>
                       <th className="px-6 py-4 font-semibold">Sentiment Status</th>
-                      <th className="px-6 py-4 font-semibold">Score</th>
+                      <th className="px-6 py-4 font-semibold">Review Sentiment Score</th>
                       <th className="px-6 py-4 text-right font-semibold">Action</th>
                     </tr>
                   </thead>
@@ -258,6 +207,7 @@ function App() {
                             <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-stone-200 sm:block">
                               <div className="h-full bg-amber-600" style={{ width: `${Math.round(row.avgReviewScore * 100)}%` }} />
                             </div>
+                            <span className="hidden text-xs text-stone-400 lg:inline">({row.reviews.length} reviews)</span>
                           </div>
                         </td>
                         <td className="px-6 py-5 text-right">
@@ -276,6 +226,80 @@ function App() {
                 </table>
               </div>
             </section>
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+              <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                <StatCard icon={<LayoutGrid className="h-6 w-6 text-amber-700" />} title="Total Properties" value={dashboardStats.totalListings} />
+              </div>
+              <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                <StatCard
+                  icon={<MessageSquare className="h-6 w-6 text-emerald-700" />}
+                  title="Total Reviews Analyzed"
+                  value={dashboardStats.reviewCount}
+                />
+              </div>
+              <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
+                <StatCard icon={<Tag className="h-6 w-6 text-rose-700" />} title="Aspects Tracked" value={dashboardStats.aspectCount} />
+              </div>
+              <div className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
+                <StatCard icon={<Smile className="h-6 w-6 text-indigo-700" />} title="Global Sentiment" value={`${averageReviewScore(propertyInsights)}%`} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
+              <div
+                className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm xl:col-span-2"
+                style={{ animationDelay: '0.5s' }}
+              >
+                <h3 className="mb-8 flex items-center gap-2 text-xl font-bold text-stone-900">
+                  <TrendingUp className="h-5 w-5 text-amber-700" />
+                  Property Sentiment Leaderboard
+                </h3>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {topProperties.map((insight, idx) => (
+                    <button
+                      key={insight.property.id}
+                      type="button"
+                      onClick={() => setSelectedProperty(insight.property)}
+                      className="group relative min-h-48 overflow-hidden rounded-xl border border-stone-200 bg-stone-50 p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:border-amber-500 hover:shadow-lg hover:shadow-amber-100/80"
+                    >
+                      <div className="absolute right-4 top-3 text-xs font-semibold uppercase tracking-wider text-stone-400">Rank</div>
+                      <div className="mb-4 text-3xl font-black text-stone-200">#{idx + 1}</div>
+                      <h4 className="mb-1 text-base font-bold text-stone-900">{insight.property.name}</h4>
+                      <p className="mb-4 text-sm text-stone-500">{insight.property.location}</p>
+                      <div className="flex items-end gap-2">
+                        <span className="text-2xl font-bold text-amber-700">{Math.round(insight.property.overall_sentiment_score * 100)}%</span>
+                        <span className="text-xs uppercase tracking-wide text-stone-500">Confidence</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <section className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm" style={{ animationDelay: '0.55s' }}>
+                <h3 className="mb-4 text-xl font-bold text-stone-900">Overall Sentiment Mix</h3>
+                <SentimentMixChart sentimentMix={sentimentMix} />
+              </section>
+
+              <div className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm xl:col-span-3" style={{ animationDelay: '0.6s' }}>
+                <h3 className="mb-6 text-xl font-bold text-stone-900">Live Review Feed</h3>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {latestReviews.map((review, i) => (
+                    <article key={i} className="rounded-lg border border-stone-200 bg-stone-50 p-4 transition-colors hover:border-amber-300">
+                      <div className="mb-2 flex items-start justify-between">
+                        <span className="text-sm font-semibold text-stone-800">{review.propertyName}</span>
+                        <div className="flex text-amber-500">
+                          {Array.from({ length: review.rating }).map((_, idx) => (
+                            <Star key={idx} className="h-3 w-3 fill-current" />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="line-clamp-2 text-sm text-stone-500">“{review.review_text}”</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
@@ -316,6 +340,51 @@ function averageReviewScore(insights: PropertyInsight[]) {
   const reviewScores = insights.flatMap((insight) => insight.reviews.map((review) => review.sentiment_score));
   if (reviewScores.length === 0) return 0;
   return Math.round((reviewScores.reduce((sum, score) => sum + score, 0) / reviewScores.length) * 100);
+}
+
+function SentimentMixChart({ sentimentMix }: { sentimentMix: Record<PropertyInsight['sentimentLabel'], number> }) {
+  const total = Object.values(sentimentMix).reduce((sum, value) => sum + value, 0);
+  const segments = [
+    { label: 'Very Positive', count: sentimentMix['Very Positive'], color: '#16a34a' },
+    { label: 'Positive', count: sentimentMix.Positive, color: '#d97706' },
+    { label: 'Neutral', count: sentimentMix.Neutral, color: '#64748b' },
+    { label: 'Negative', count: sentimentMix.Negative, color: '#e11d48' }
+  ];
+
+  let start = 0;
+  const gradientStops = segments
+    .map((segment) => {
+      const portion = total > 0 ? (segment.count / total) * 360 : 0;
+      const stop = `${segment.color} ${start}deg ${start + portion}deg`;
+      start += portion;
+      return stop;
+    })
+    .join(', ');
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="mx-auto flex h-52 w-52 items-center justify-center rounded-full" style={{ background: `conic-gradient(${gradientStops || '#e2e8f0 0deg 360deg'})` }}>
+        <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full bg-white shadow-inner">
+          <span className="text-3xl font-black text-stone-900">{total}</span>
+          <span className="text-xs uppercase tracking-widest text-stone-500">Properties</span>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {segments.map((segment) => {
+          const percent = total > 0 ? Math.round((segment.count / total) * 100) : 0;
+          return (
+            <div key={segment.label} className="flex items-center justify-between rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: segment.color }} />
+                <span className="text-sm font-medium text-stone-700">{segment.label}</span>
+              </div>
+              <span className="text-sm font-bold text-stone-900">{segment.count} ({percent}%)</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default App;
