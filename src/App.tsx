@@ -350,7 +350,6 @@ function SentimentBadge({ label }: { label: PropertyInsight['sentimentLabel'] })
 }
 
 function SentimentMixChart({ sentimentMix }: { sentimentMix: Record<PropertyInsight['sentimentLabel'], number> }) {
-  const total = Object.values(sentimentMix).reduce((sum, value) => sum + value, 0);
   const segments = [
     { label: 'Very Positive', count: sentimentMix['Very Positive'], color: '#16a34a' },
     { label: 'Positive', count: sentimentMix.Positive, color: '#d97706' },
@@ -358,50 +357,28 @@ function SentimentMixChart({ sentimentMix }: { sentimentMix: Record<PropertyInsi
     { label: 'Negative', count: sentimentMix.Negative, color: '#e11d48' }
   ];
 
-  let start = 0;
-  const gradientStops = segments
-    .map((segment) => {
-      const portion = total > 0 ? (segment.count / total) * 360 : 0;
-      const stop = `${segment.color} ${start}deg ${start + portion}deg`;
-      start += portion;
-      return stop;
-    })
-    .join(', ');
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="mx-auto flex h-52 w-52 items-center justify-center rounded-full" style={{ background: `conic-gradient(${gradientStops || '#e2e8f0 0deg 360deg'})` }}>
-        <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full bg-white shadow-inner">
-          <span className="text-3xl font-black text-stone-900">{total}</span>
-          <span className="text-xs uppercase tracking-widest text-stone-500">Properties</span>
-        </div>
-      </div>
-      <div className="space-y-3">
-        {segments.map((segment) => {
-          const percent = total > 0 ? Math.round((segment.count / total) * 100) : 0;
-          return (
-            <div key={segment.label} className="flex items-center justify-between rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
-              <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: segment.color }} />
-                <span className="text-sm font-medium text-stone-700">{segment.label}</span>
-              </div>
-              <span className="text-sm font-bold text-stone-900">{segment.count} ({percent}%)</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  return <DonutChart segments={segments} totalLabel="Properties" />;
 }
 
 function ReviewSentimentPieChart({ sentimentMix }: { sentimentMix: Record<'Positive' | 'Neutral' | 'Negative', number> }) {
-  const total = Object.values(sentimentMix).reduce((sum, value) => sum + value, 0);
   const segments = [
     { label: 'Positive', count: sentimentMix.Positive, color: '#22c55e' },
     { label: 'Neutral', count: sentimentMix.Neutral, color: '#f59e0b' },
     { label: 'Negative', count: sentimentMix.Negative, color: '#ef4444' }
   ];
 
+  return <DonutChart segments={segments} totalLabel="Reviews" />;
+}
+
+interface ChartSegment {
+  label: string;
+  count: number;
+  color: string;
+}
+
+function DonutChart({ segments, totalLabel }: { segments: ChartSegment[]; totalLabel: string }) {
+  const total = segments.reduce((sum, segment) => sum + segment.count, 0);
+
   let start = 0;
   const gradientStops = segments
     .map((segment) => {
@@ -417,7 +394,7 @@ function ReviewSentimentPieChart({ sentimentMix }: { sentimentMix: Record<'Posit
       <div className="mx-auto flex h-52 w-52 items-center justify-center rounded-full" style={{ background: `conic-gradient(${gradientStops || '#e2e8f0 0deg 360deg'})` }}>
         <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full bg-white shadow-inner">
           <span className="text-3xl font-black text-stone-900">{total}</span>
-          <span className="text-xs uppercase tracking-widest text-stone-500">Reviews</span>
+          <span className="text-xs uppercase tracking-widest text-stone-500">{totalLabel}</span>
         </div>
       </div>
       <div className="space-y-3">
