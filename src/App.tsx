@@ -166,6 +166,9 @@ function App() {
                 <div>
                   <h3 className="text-2xl font-bold text-stone-900">Property Intelligence Directory</h3>
                   <p className="mt-1 text-stone-500">Detailed breakdown of all tracked properties.</p>
+                  <p className="mt-1 text-xs text-stone-400">
+                    Score = average sentiment from submitted reviews for each property.
+                  </p>
                 </div>
                 <div className="relative w-full sm:max-w-md">
                   <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
@@ -186,7 +189,7 @@ function App() {
                       <th className="px-6 py-4 font-semibold">Property</th>
                       <th className="px-6 py-4 font-semibold">Location</th>
                       <th className="px-6 py-4 font-semibold">Sentiment Status</th>
-                      <th className="px-6 py-4 font-semibold">Score</th>
+                      <th className="px-6 py-4 font-semibold">Review Sentiment Score</th>
                       <th className="px-6 py-4 text-right font-semibold">Action</th>
                     </tr>
                   </thead>
@@ -204,6 +207,7 @@ function App() {
                             <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-stone-200 sm:block">
                               <div className="h-full bg-amber-600" style={{ width: `${Math.round(row.avgReviewScore * 100)}%` }} />
                             </div>
+                            <span className="hidden text-xs text-stone-400 lg:inline">({row.reviews.length} reviews)</span>
                           </div>
                         </td>
                         <td className="px-6 py-5 text-right">
