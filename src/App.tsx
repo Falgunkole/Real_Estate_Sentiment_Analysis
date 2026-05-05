@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
+  AlertCircle,
   ArrowRight,
+  BadgeAlert,
   Building2,
   LayoutGrid,
   MessageSquare,
   Search,
-  Smile,
   Tag,
   TrendingUp
 } from 'lucide-react';
@@ -93,13 +94,17 @@ function App() {
 
   const dashboardStats = useMemo(() => {
     const allReviews = propertyInsights.flatMap((insight) => insight.reviews);
-    const uniqueReviewers = new Set(allReviews.map((review) => review.user_name.toLowerCase())).size;
+    const positiveReviews = allReviews.filter((review) => review.sentiment === 'Positive').length;
+    const negativeReviews = allReviews.filter((review) => review.sentiment === 'Negative').length;
+    const neutralReviews = allReviews.filter((review) => review.sentiment === 'Neutral').length;
 
     return {
       totalListings: properties.length,
-      uniqueReviewers,
       aspectCount: aspectNames.length,
-      reviewCount: allReviews.length
+      reviewCount: allReviews.length,
+      positiveReviews,
+      negativeReviews,
+      neutralReviews
     };
   }, [properties, propertyInsights]);
 
@@ -108,7 +113,7 @@ function App() {
     [filteredInsights]
   );
 
-  const sentimentMix = useMemo(() => {
+  const propertySentimentMix = useMemo(() => {
     const distribution = {
       'Very Positive': 0,
       Positive: 0,
@@ -122,6 +127,15 @@ function App() {
 
     return distribution;
   }, [propertyInsights]);
+
+  const reviewSentimentMix = useMemo(
+    () => ({
+      Positive: dashboardStats.positiveReviews,
+      Neutral: dashboardStats.neutralReviews,
+      Negative: dashboardStats.negativeReviews
+    }),
+    [dashboardStats.negativeReviews, dashboardStats.neutralReviews, dashboardStats.positiveReviews]
+  );
 
   return (
     <div className="min-h-screen w-full bg-stone-100 text-stone-700 selection:bg-amber-200 selection:text-stone-900 font-sans">
@@ -222,22 +236,28 @@ function App() {
               </div>
             </section>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-6">
               <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                <StatCard icon={<LayoutGrid className="h-6 w-6 text-amber-700" />} title="Total Properties" value={dashboardStats.totalListings} />
+                <StatCard icon={<LayoutGrid className="h-6 w-6 text-cyan-300" />} title="Total Properties" value={dashboardStats.totalListings} />
               </div>
               <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
                 <StatCard
-                  icon={<MessageSquare className="h-6 w-6 text-emerald-700" />}
+                  icon={<MessageSquare className="h-6 w-6 text-violet-300" />}
                   title="Total Reviews Analyzed"
                   value={dashboardStats.reviewCount}
                 />
               </div>
               <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
-                <StatCard icon={<Tag className="h-6 w-6 text-rose-700" />} title="Aspects Tracked" value={dashboardStats.aspectCount} />
+                <StatCard icon={<TrendingUp className="h-6 w-6 text-emerald-300" />} title="Positive Reviews" value={dashboardStats.positiveReviews} />
               </div>
               <div className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
-                <StatCard icon={<Smile className="h-6 w-6 text-indigo-700" />} title="Global Sentiment" value={`${averageReviewScore(propertyInsights)}%`} />
+                <StatCard icon={<BadgeAlert className="h-6 w-6 text-rose-300" />} title="Negative Reviews" value={dashboardStats.negativeReviews} />
+              </div>
+              <div className="animate-slide-up" style={{ animationDelay: '0.45s' }}>
+                <StatCard icon={<AlertCircle className="h-6 w-6 text-amber-300" />} title="Neutral Reviews" value={dashboardStats.neutralReviews} />
+              </div>
+              <div className="animate-slide-up" style={{ animationDelay: '0.5s' }}>
+                <StatCard icon={<Tag className="h-6 w-6 text-indigo-300" />} title="Aspects Tracked" value={dashboardStats.aspectCount} />
               </div>
             </div>
 
@@ -272,8 +292,13 @@ function App() {
               </div>
 
               <section className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm" style={{ animationDelay: '0.55s' }}>
-                <h3 className="mb-4 text-xl font-bold text-stone-900">Overall Sentiment Mix</h3>
-                <SentimentMixChart sentimentMix={sentimentMix} />
+                <h3 className="mb-4 text-xl font-bold text-stone-900">Review Sentiment Mix</h3>
+                <ReviewSentimentPieChart sentimentMix={reviewSentimentMix} />
+              </section>
+
+              <section className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm" style={{ animationDelay: '0.58s' }}>
+                <h3 className="mb-4 text-xl font-bold text-stone-900">Property Confidence Mix</h3>
+                <SentimentMixChart sentimentMix={propertySentimentMix} />
               </section>
 
               <section className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm xl:col-span-3" style={{ animationDelay: '0.6s' }}>
@@ -299,14 +324,14 @@ function App() {
 
 function StatCard({ icon, title, value }: { icon: ReactNode; title: string; value: string | number }) {
   return (
-    <div className="group rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+    <div className="group rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-700/30">
       <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-stone-200 bg-stone-100 transition-all duration-300 group-hover:border-amber-300 group-hover:bg-amber-50">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-600 bg-slate-800 transition-all duration-300 group-hover:border-cyan-400/50 group-hover:bg-slate-700">
           {icon}
         </div>
         <div>
-          <p className="mb-1 text-sm font-medium text-stone-500">{title}</p>
-          <p className="text-3xl font-black tracking-tight text-stone-900">{value}</p>
+          <p className="mb-1 text-sm font-medium text-slate-300">{title}</p>
+          <p className="text-3xl font-black tracking-tight text-white">{value}</p>
         </div>
       </div>
     </div>
@@ -322,12 +347,6 @@ function SentimentBadge({ label }: { label: PropertyInsight['sentimentLabel'] })
   };
 
   return <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider ${styles[label]}`}>{label}</span>;
-}
-
-function averageReviewScore(insights: PropertyInsight[]) {
-  const reviewScores = insights.flatMap((insight) => insight.reviews.map((review) => review.sentiment_score));
-  if (reviewScores.length === 0) return 0;
-  return Math.round((reviewScores.reduce((sum, score) => sum + score, 0) / reviewScores.length) * 100);
 }
 
 function SentimentMixChart({ sentimentMix }: { sentimentMix: Record<PropertyInsight['sentimentLabel'], number> }) {
@@ -355,6 +374,50 @@ function SentimentMixChart({ sentimentMix }: { sentimentMix: Record<PropertyInsi
         <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full bg-white shadow-inner">
           <span className="text-3xl font-black text-stone-900">{total}</span>
           <span className="text-xs uppercase tracking-widest text-stone-500">Properties</span>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {segments.map((segment) => {
+          const percent = total > 0 ? Math.round((segment.count / total) * 100) : 0;
+          return (
+            <div key={segment.label} className="flex items-center justify-between rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: segment.color }} />
+                <span className="text-sm font-medium text-stone-700">{segment.label}</span>
+              </div>
+              <span className="text-sm font-bold text-stone-900">{segment.count} ({percent}%)</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ReviewSentimentPieChart({ sentimentMix }: { sentimentMix: Record<'Positive' | 'Neutral' | 'Negative', number> }) {
+  const total = Object.values(sentimentMix).reduce((sum, value) => sum + value, 0);
+  const segments = [
+    { label: 'Positive', count: sentimentMix.Positive, color: '#22c55e' },
+    { label: 'Neutral', count: sentimentMix.Neutral, color: '#f59e0b' },
+    { label: 'Negative', count: sentimentMix.Negative, color: '#ef4444' }
+  ];
+
+  let start = 0;
+  const gradientStops = segments
+    .map((segment) => {
+      const portion = total > 0 ? (segment.count / total) * 360 : 0;
+      const stop = `${segment.color} ${start}deg ${start + portion}deg`;
+      start += portion;
+      return stop;
+    })
+    .join(', ');
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="mx-auto flex h-52 w-52 items-center justify-center rounded-full" style={{ background: `conic-gradient(${gradientStops || '#e2e8f0 0deg 360deg'})` }}>
+        <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full bg-white shadow-inner">
+          <span className="text-3xl font-black text-stone-900">{total}</span>
+          <span className="text-xs uppercase tracking-widest text-stone-500">Reviews</span>
         </div>
       </div>
       <div className="space-y-3">

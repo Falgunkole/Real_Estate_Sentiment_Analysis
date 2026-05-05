@@ -251,6 +251,86 @@ export const mockReviews: Review[] = [
     sentiment: 'Negative',
     sentiment_score: 0.31,
     created_at: now
+  },
+  {
+    id: 'r16',
+    property_id: 'p1',
+    user_name: 'Ritika A.',
+    review_text: 'Excellent society management and security. Basement parking can feel tight for larger SUVs.',
+    rating: 4,
+    sentiment: 'Positive',
+    sentiment_score: 0.78,
+    created_at: now
+  },
+  {
+    id: 'r17',
+    property_id: 'p2',
+    user_name: 'Harsh T.',
+    review_text: 'Great access to offices and decent amenities, but occasional water pressure dips remain an issue.',
+    rating: 3,
+    sentiment: 'Neutral',
+    sentiment_score: 0.52,
+    created_at: now
+  },
+  {
+    id: 'r18',
+    property_id: 'p3',
+    user_name: 'Kabir O.',
+    review_text: 'Layout and community space are good. Construction quality in some towers needs improvement.',
+    rating: 3,
+    sentiment: 'Neutral',
+    sentiment_score: 0.45,
+    created_at: now
+  },
+  {
+    id: 'r19',
+    property_id: 'p4',
+    user_name: 'Simran C.',
+    review_text: 'Smooth move-in process and strong upkeep. Visitor management app sometimes glitches.',
+    rating: 4,
+    sentiment: 'Positive',
+    sentiment_score: 0.73,
+    created_at: now
+  },
+  {
+    id: 'r20',
+    property_id: 'p5',
+    user_name: 'Yash M.',
+    review_text: 'Well-maintained open spaces and clubhouse. Travel time during peak evening can increase.',
+    rating: 4,
+    sentiment: 'Positive',
+    sentiment_score: 0.71,
+    created_at: now
+  },
+  {
+    id: 'r21',
+    property_id: 'p6',
+    user_name: 'Sneha Q.',
+    review_text: 'Value pricing and practical floor plans, though lift wait times are noticeable during rush hours.',
+    rating: 3,
+    sentiment: 'Neutral',
+    sentiment_score: 0.5,
+    created_at: now
+  },
+  {
+    id: 'r22',
+    property_id: 'p7',
+    user_name: 'Aman R.',
+    review_text: 'Top-notch amenities and well-run maintenance; premium pricing is the main trade-off.',
+    rating: 5,
+    sentiment: 'Positive',
+    sentiment_score: 0.85,
+    created_at: now
+  },
+  {
+    id: 'r23',
+    property_id: 'p8',
+    user_name: 'Naina W.',
+    review_text: 'Good apartment sizing for the segment, but last-mile transit access is still developing.',
+    rating: 3,
+    sentiment: 'Neutral',
+    sentiment_score: 0.47,
+    created_at: now
   }
 ];
 
@@ -285,5 +365,21 @@ export const mockAspectSentiments: AspectSentiment[] = [
   { id: 'a28', review_id: 'r14', aspect: 'Price', sentiment: 'Positive', score: 0.72, key_phrases: ['fair pricing'], created_at: now },
   { id: 'a29', review_id: 'r14', aspect: 'Utilities', sentiment: 'Neutral', score: 0.41, key_phrases: ['finishing quality'], created_at: now },
   { id: 'a30', review_id: 'r15', aspect: 'Transport', sentiment: 'Negative', score: 0.28, key_phrases: ['limited public transport'], created_at: now },
-  { id: 'a31', review_id: 'r15', aspect: 'Utilities', sentiment: 'Negative', score: 0.33, key_phrases: ['handover delays'], created_at: now }
+  { id: 'a31', review_id: 'r15', aspect: 'Utilities', sentiment: 'Negative', score: 0.33, key_phrases: ['handover delays'], created_at: now },
+  { id: 'a32', review_id: 'r16', aspect: 'Utilities', sentiment: 'Positive', score: 0.8, key_phrases: ['society management'], created_at: now },
+  { id: 'a33', review_id: 'r16', aspect: 'Price', sentiment: 'Neutral', score: 0.49, key_phrases: ['parking tight'], created_at: now },
+  { id: 'a34', review_id: 'r17', aspect: 'Transport', sentiment: 'Positive', score: 0.76, key_phrases: ['access to offices'], created_at: now },
+  { id: 'a35', review_id: 'r17', aspect: 'Utilities', sentiment: 'Neutral', score: 0.43, key_phrases: ['water pressure dips'], created_at: now },
+  { id: 'a36', review_id: 'r18', aspect: 'Location', sentiment: 'Positive', score: 0.69, key_phrases: ['community space'], created_at: now },
+  { id: 'a37', review_id: 'r18', aspect: 'Utilities', sentiment: 'Negative', score: 0.36, key_phrases: ['construction quality'], created_at: now },
+  { id: 'a38', review_id: 'r19', aspect: 'Utilities', sentiment: 'Positive', score: 0.77, key_phrases: ['strong upkeep'], created_at: now },
+  { id: 'a39', review_id: 'r19', aspect: 'Transport', sentiment: 'Neutral', score: 0.47, key_phrases: ['app glitches'], created_at: now },
+  { id: 'a40', review_id: 'r20', aspect: 'Location', sentiment: 'Positive', score: 0.74, key_phrases: ['open spaces'], created_at: now },
+  { id: 'a41', review_id: 'r20', aspect: 'Transport', sentiment: 'Neutral', score: 0.44, key_phrases: ['peak evening'], created_at: now },
+  { id: 'a42', review_id: 'r21', aspect: 'Price', sentiment: 'Positive', score: 0.7, key_phrases: ['value pricing'], created_at: now },
+  { id: 'a43', review_id: 'r21', aspect: 'Utilities', sentiment: 'Neutral', score: 0.46, key_phrases: ['lift wait times'], created_at: now },
+  { id: 'a44', review_id: 'r22', aspect: 'Utilities', sentiment: 'Positive', score: 0.86, key_phrases: ['well-run maintenance'], created_at: now },
+  { id: 'a45', review_id: 'r22', aspect: 'Price', sentiment: 'Neutral', score: 0.42, key_phrases: ['premium pricing'], created_at: now },
+  { id: 'a46', review_id: 'r23', aspect: 'Price', sentiment: 'Positive', score: 0.68, key_phrases: ['good sizing'], created_at: now },
+  { id: 'a47', review_id: 'r23', aspect: 'Transport', sentiment: 'Neutral', score: 0.41, key_phrases: ['last-mile transit'], created_at: now }
 ];
