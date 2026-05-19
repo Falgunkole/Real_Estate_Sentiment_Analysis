@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { PropertyModal } from './components/PropertyModal';
 import type { Property, Review } from './lib/database.types';
-import { getProperties, getReviewsByProperty } from './lib/queries';
+import { getProperties, getReviewsByProperty, getTrackedAspectCount } from './lib/queries';
 
 interface PropertyInsight {
   property: Property;
@@ -21,14 +21,13 @@ interface PropertyInsight {
   sentimentLabel: 'Very Positive' | 'Positive' | 'Neutral' | 'Negative';
 }
 
-const aspectNames = ['Location', 'Transport', 'Utilities', 'Price'];
-
 function App() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [propertyInsights, setPropertyInsights] = useState<PropertyInsight[]>([]);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [aspectCount, setAspectCount] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -50,6 +49,8 @@ function App() {
       setLoading(true);
       const propertiesData = await getProperties();
       setProperties(propertiesData);
+
+      const trackedAspectCount = await getTrackedAspectCount();
 
       const insightRows = await Promise.all(
         propertiesData.map(async (property) => {
@@ -76,6 +77,7 @@ function App() {
       );
 
       setPropertyInsights(insightRows);
+      setAspectCount(trackedAspectCount);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -98,10 +100,10 @@ function App() {
     return {
       totalListings: properties.length,
       uniqueReviewers,
-      aspectCount: aspectNames.length,
+      aspectCount,
       reviewCount: allReviews.length
     };
-  }, [properties, propertyInsights]);
+  }, [aspectCount, properties, propertyInsights]);
 
   const topProperties = useMemo(
     () => [...propertyInsights].sort((a, b) => b.property.overall_sentiment_score - a.property.overall_sentiment_score).slice(0, 3),
