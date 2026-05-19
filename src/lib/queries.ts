@@ -1,16 +1,14 @@
 import type { Property, Review, AspectSentiment } from './database.types';
 import rawData from '../data/master_dashboard_data.json';
 
-// Type definitions reflecting your exact JSON output schema structure
 interface TimelineReview {
   date: string;
   review_text: string;
-  attention_weight: number;
 }
 
 interface AspectRecord {
   property_id: string;
-  aspect: string;
+  aspect: AspectSentiment['aspect'];
   final_verdict: string;
   confidence_score: number;
   timeline_data: TimelineReview[];
@@ -18,211 +16,162 @@ interface AspectRecord {
 
 const typedAspectRecords = rawData as AspectRecord[];
 
-/**
- * 1. Helper: Cleans the 99acres URLs into clear, human-readable Property Names
- */
+const POSITIVE_PATTERNS = ['good', 'positive', 'value buy', 'fairly', 'well connected'];
+const NEGATIVE_PATTERNS = ['overpriced', 'poor', 'negative', 'issue'];
+
 function parsePropertyName(idUrl: string): string {
   try {
-    const url = new URL(idUrl);
-    const pathParts = url.pathname.split('/');
-    // Tries to locate the 'property-name-reviews-ratings...' segment
-    const slug = pathParts.find(p => p.includes('reviews-ratings')) || pathParts[pathParts.length - 1] || 'Premium Property';
+    const { pathname } = new URL(idUrl);
+    const parts = pathname.split('/').filter(Boolean);
+    const slug = parts.find((p) => p.includes('reviews-ratings')) ?? parts.at(-1) ?? 'premium-property';
     return slug
       .replace(/-reviews-ratings.*/, '')
       .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   } catch {
     return 'Premium Urban Residence';
   }
 }
 
-/**
- * 2. Helper: Extracts a localized neighborhood from the URL path pattern
- */
 function parseLocation(idUrl: string): string {
   try {
-    const url = new URL(idUrl);
-    const pathParts = url.pathname.split('/');
-    const targetSlug = pathParts.find(p => p.includes('reviews-ratings')) || '';
-    const items = targetSlug.split('-');
-    
-    // Attempting to pluck location names preceding regional labels in typical 99acres paths
-    if (items.length > 4) {
-      const neighborhood = items[items.length - 4];
-      const region = items[items.length - 3] || 'Mumbai';
-      return `${neighborhood.charAt(0).toUpperCase() + neighborhood.slice(1)}, ${region.charAt(0).toUpperCase() + region.slice(1)}`;
+    const { pathname } = new URL(idUrl);
+    const parts = pathname.split('/').filter(Boolean);
+    const slug = parts.find((p) => p.includes('reviews-ratings')) ?? '';
+    const tokens = slug.split('-').filter(Boolean);
+    if (tokens.length >= 4) {
+      const city = tokens[tokens.length - 3];
+      const zone = tokens[tokens.length - 4];
+      return `${zone.charAt(0).toUpperCase() + zone.slice(1)}, ${city.charAt(0).toUpperCase() + city.slice(1)}`;
     }
   } catch {
-    // Ignore and fall back
+    // Ignore URL parse failures.
   }
   return 'Mumbai Region, MH';
 }
 
-/**
- * 3. Helper: Maps categorical model judgements to continuous normalized sentiment numbers [0.0 - 1.0]
- * This ensures your frontend dashboard widgets map to percentages accurately.
- */
 function calculateScore(verdict: string, confidence: number): number {
-  const normalizedVerdict = verdict.toLowerCase();
-  if (
-    normalizedVerdict.includes('good') || 
-    normalizedVerdict.includes('positive') || 
-    normalizedVerdict.includes('value buy') || 
-    normalizedVerdict.includes('fairly') ||
-    normalizedVerdict.includes('well connected')
-  ) {
-    return 0.5 + (confidence * 0.5); // Maps positive ranges between 0.5 to 1.0
-  }
-  if (
-    normalizedVerdict.includes('overpriced') || 
-    normalizedVerdict.includes('poor') || 
-    normalizedVerdict.includes('negative') ||
-    normalizedVerdict.includes('issue')
-  ) {
-    return 0.5 - (confidence * 0.5); // Maps negative ranges between 0.0 to 0.5
-  }
-  return 0.5; // Neutral baseline fallback
+  const normalized = verdict.toLowerCase();
+  if (POSITIVE_PATTERNS.some((pattern) => normalized.includes(pattern))) return 0.5 + confidence * 0.5;
+  if (NEGATIVE_PATTERNS.some((pattern) => normalized.includes(pattern))) return 0.5 - confidence * 0.5;
+  return 0.5;
 }
 
-/* ----------------------------------------------------
-   DATA HARVESTING & COMPILATION ARRAYS
-   ---------------------------------------------------- */
+function parseReviewDate(value: string): string {
+  const parts = value.split('-');
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    return `${year}-${month}-${day}T12:00:00.000Z`;
+  }
+  return new Date().toISOString();
+}
 
-const processedProperties: Property[] = [];
-const processedReviews: Review[] = [];
-const processedAspectSentiments: AspectSentiment[] = [];
-
-// Helper mappings to hold grouped metrics dynamically
 const propertyAggregates = new Map<string, { cumulativeScore: number; count: number }>();
-const uniquePropertyIds = new Set<string>();
+const propertySequence = new Map<string, number>();
+const reviewByKey = new Map<string, Review>();
+const reviewAspects = new Map<string, AspectSentiment[]>();
+const properties: Property[] = [];
+const reviews: Review[] = [];
+const aspects: AspectSentiment[] = [];
 
-// Step A: Group all records to figure out average sentiment score aggregates per property
-typedAspectRecords.forEach((record) => {
-  const numericScore = calculateScore(record.final_verdict, record.confidence_score);
-  const current = propertyAggregates.get(record.property_id) || { cumulativeScore: 0, count: 0 };
-  
-  propertyAggregates.set(record.property_id, {
-    cumulativeScore: current.cumulativeScore + numericScore,
-    count: current.count + 1
-  });
-  uniquePropertyIds.add(record.property_id);
-});
+for (const record of typedAspectRecords) {
+  const score = calculateScore(record.final_verdict, record.confidence_score);
+  const current = propertyAggregates.get(record.property_id) ?? { cumulativeScore: 0, count: 0 };
+  propertyAggregates.set(record.property_id, { cumulativeScore: current.cumulativeScore + score, count: current.count + 1 });
 
-// Seed static pricing lists for real estate listings matching processed property keys
-const localizedPriceBook: Record<string, { price: number; area: number }> = {
-  '81 Aureate': { price: 54000000, area: 2450 },
-  'Aadi Allure': { price: 17500000, area: 980 },
-  'Aarey Milk Colony': { price: 11000000, area: 720 }
-};
+  if (!propertySequence.has(record.property_id)) {
+    propertySequence.set(record.property_id, propertySequence.size + 1);
+  }
+}
 
-// Step B: Build Property Objects out of unique ID targets found across the JSON rows
-Array.from(uniquePropertyIds).forEach((id, index) => {
-  const aggregate = propertyAggregates.get(id)!;
-  const name = parsePropertyName(id);
-  const location = parseLocation(id);
-  
-  // Calculate specific average profile score
-  const finalSentimentScore = parseFloat((aggregate.cumulativeScore / aggregate.count).toFixed(2));
-  
-  // Resolve listing numbers or interpolate cleanly
-  const matchedData = localizedPriceBook[name] || {
-    price: 14000000 + (index * 4200000),
-    area: 950 + (index * 160)
-  };
+const sortedPropertyIds = Array.from(propertySequence.keys());
+for (const propertyId of sortedPropertyIds) {
+  const index = propertySequence.get(propertyId)!;
+  const aggregate = propertyAggregates.get(propertyId)!;
+  const name = parsePropertyName(propertyId);
+  const location = parseLocation(propertyId);
 
-  processedProperties.push({
-    id: id,
-    name: name,
-    location: location,
-    price: matchedData.price,
-    area_sqft: matchedData.area,
-    description: `Automated sentiment profile compiled for ${name}. Metrics aggregate user experience timelines for amenities, transportation connections, structural design value, and neighborhood utility distributions.`,
+  properties.push({
+    id: propertyId,
+    name,
+    location,
+    price: 12000000 + index * 3500000,
+    area_sqft: 850 + index * 95,
+    description: `Sentiment profile generated from complete timeline reviews for ${name}, covering location, transport, utilities, and price signals.`,
     image_url: '',
-    overall_sentiment_score: finalSentimentScore,
+    overall_sentiment_score: Number((aggregate.cumulativeScore / aggregate.count).toFixed(2)),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   });
-});
+}
 
-// Step C: Distribute individual user review instances and individual aspect node arrays
-let reviewSequence = 1;
-let aspectSequence = 1;
+let reviewCounter = 1;
+let aspectCounter = 1;
 
-typedAspectRecords.forEach((record) => {
-  const scoreValue = calculateScore(record.final_verdict, record.confidence_score);
-  
-  record.timeline_data.forEach((item) => {
-    const reviewId = `json_rev_${reviewSequence++}`;
-    
-    // Avoid inflating global counts if identical texts span across split aspects
-    const existingReview = processedReviews.find(
-      r => r.property_id === record.property_id && r.review_text === item.review_text
-    );
+for (const record of typedAspectRecords) {
+  const score = Number(calculateScore(record.final_verdict, record.confidence_score).toFixed(2));
+  const sentiment: Review['sentiment'] = score > 0.65 ? 'Positive' : score < 0.4 ? 'Negative' : 'Neutral';
 
-    let assignedReviewId = reviewId;
+  for (const item of record.timeline_data) {
+    const reviewKey = `${record.property_id}::${item.review_text}`;
+    let review = reviewByKey.get(reviewKey);
 
-    if (!existingReview) {
-      // Re-format dd-mm-yyyy dates safely into standard ISO compatibility
-      let isoDateString = new Date().toISOString();
-      if (item.date && item.date.includes('-')) {
-        const parts = item.date.split('-');
-        if (parts.length === 3) {
-          isoDateString = `${parts[2]}-${parts[1]}-${parts[0]}T12:00:00.000Z`;
-        }
-      }
-
-      processedReviews.push({
-        id: reviewId,
+    if (!review) {
+      review = {
+        id: `json_rev_${reviewCounter++}`,
         property_id: record.property_id,
-        user_name: `Verified Resident ${reviewSequence}`,
+        user_name: `Verified Resident ${reviewCounter}`,
         review_text: item.review_text,
-        rating: scoreValue > 0.75 ? 5 : scoreValue > 0.45 ? 4 : 2,
-        sentiment: scoreValue > 0.65 ? 'Positive' : scoreValue < 0.4 ? 'Negative' : 'Neutral',
-        sentiment_score: parseFloat(scoreValue.toFixed(2)),
-        created_at: isoDateString
-      });
-    } else {
-      assignedReviewId = existingReview.id;
+        rating: score > 0.75 ? 5 : score > 0.45 ? 4 : 2,
+        sentiment,
+        sentiment_score: score,
+        created_at: parseReviewDate(item.date)
+      };
+      reviewByKey.set(reviewKey, review);
+      reviews.push(review);
+      reviewAspects.set(review.id, []);
     }
 
-    // Append aspect score indexes bound directly into the matching user review session
-    processedAspectSentiments.push({
-      id: `json_asp_${aspectSequence++}`,
-      review_id: assignedReviewId,
+    const aspectRecord: AspectSentiment = {
+      id: `json_asp_${aspectCounter++}`,
+      review_id: review.id,
       aspect: record.aspect,
-      sentiment: scoreValue > 0.65 ? 'Positive' : scoreValue < 0.4 ? 'Negative' : 'Neutral',
-      score: parseFloat(scoreValue.toFixed(2)),
+      sentiment,
+      score,
       key_phrases: [record.final_verdict],
       created_at: new Date().toISOString()
-    });
-  });
-});
+    };
 
-/* ----------------------------------------------------
-   FRONTEND QUERY EXPORTS CONNECTIONS
-   ---------------------------------------------------- */
+    aspects.push(aspectRecord);
+    reviewAspects.get(review.id)?.push(aspectRecord);
+  }
+}
+
+const reviewsByProperty = new Map<string, Review[]>();
+for (const review of reviews) {
+  const current = reviewsByProperty.get(review.property_id) ?? [];
+  current.push(review);
+  reviewsByProperty.set(review.property_id, current);
+}
 
 export async function getProperties(): Promise<Property[]> {
-  return Promise.resolve(processedProperties);
+  return properties;
 }
 
-export async function getPropertyReviews(propertyId: string): Promise<Review[]> {
-  const results = processedReviews.filter(review => review.property_id === propertyId);
-  return Promise.resolve(results);
+export async function getReviewsByProperty(propertyId: string): Promise<Review[]> {
+  return reviewsByProperty.get(propertyId) ?? [];
 }
 
-export async function getReviewAspects(reviewId: string): Promise<AspectSentiment[]> {
-  const results = processedAspectSentiments.filter(aspect => aspect.review_id === reviewId);
-  return Promise.resolve(results);
+export async function getAspectSentimentsByReview(reviewId: string): Promise<AspectSentiment[]> {
+  return reviewAspects.get(reviewId) ?? [];
 }
 
 export async function getPropertyAspectSentiments(propertyId: string): Promise<AspectSentiment[]> {
-  // Find reviews linked to this specific property first
-  const reviewIds = processedReviews
-    .filter(review => review.property_id === propertyId)
-    .map(review => review.id);
+  return (reviewsByProperty.get(propertyId) ?? []).flatMap((review) => reviewAspects.get(review.id) ?? []);
+}
 
-  const results = processedAspectSentiments.filter(aspect => reviewIds.includes(aspect.review_id));
-  return Promise.resolve(results);
+export async function getTrackedAspectCount(): Promise<number> {
+  return new Set(typedAspectRecords.map((entry) => entry.aspect)).size;
 }
