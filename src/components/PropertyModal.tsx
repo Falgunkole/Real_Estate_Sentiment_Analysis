@@ -1,4 +1,4 @@
-import { Building2, DollarSign, Home, MapPin, X } from 'lucide-react';
+import { Building2, ExternalLink, Home, MapPin, Tag, X } from 'lucide-react';
 import type { Property } from '../lib/database.types';
 import { SentimentAnalysis } from './SentimentAnalysis';
 
@@ -7,74 +7,76 @@ interface PropertyModalProps {
   onClose: () => void;
 }
 
+function formatInr(price: number) {
+  if (!price) return 'Price on request';
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price);
+}
+
 export function PropertyModal({ property, onClose }: PropertyModalProps) {
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(price);
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-stone-900/60 px-4 py-6 backdrop-blur-sm sm:py-10">
-      <div className="mx-auto my-auto w-full max-w-6xl rounded-2xl border border-stone-200 bg-stone-50 shadow-2xl">
-        <div className="max-h-[88vh] overflow-y-auto">
-          <div className="border-b border-stone-200 p-6 sm:p-8">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">
-                  <Building2 className="h-3.5 w-3.5" />
-                  Property insight hub
-                </div>
-                <h2 className="text-3xl font-bold text-stone-900">{property.name}</h2>
-                <p className="mt-2 max-w-3xl text-stone-600">{property.description}</p>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close property details"
-                className="rounded-full border border-stone-300 bg-white p-2 transition-colors hover:bg-stone-100"
-              >
-                <X className="h-6 w-6 text-stone-700" />
-              </button>
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 gap-3 text-stone-700 md:grid-cols-3">
-              <div className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2.5">
-                <MapPin className="h-5 w-5 text-amber-700" />
-                <span>{property.location}</span>
-              </div>
-              <div className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2.5">
-                <Home className="h-5 w-5 text-amber-700" />
-                <span>{property.area_sqft} sq.ft</span>
-              </div>
-              <div className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2.5">
-                <DollarSign className="h-5 w-5 text-amber-700" />
-                <span className="font-semibold">{formatPrice(property.price)}</span>
-              </div>
-            </div>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl sm:rounded-2xl animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] p-5 sm:p-6">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs text-amber-300">
+              <Building2 className="h-3.5 w-3.5" />
+              Property intelligence
+            </span>
+            <h2 className="mt-2 text-2xl font-bold sm:text-3xl">{property.name}</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">{property.description}</p>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-[var(--border)] p-2 text-[var(--muted)] hover:bg-white/5 hover:text-white"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-          <div className="p-6 sm:p-8">
-            <h3 className="mb-4 text-xl font-semibold text-stone-900">Comprehensive sentiment intelligence</h3>
-            <p className="mb-6 text-sm text-stone-600">
-              This page consolidates sentiment signals extracted from user reviews and aspect-level analysis so teams can make faster investment,
-              marketing, and product decisions.
-            </p>
-            <SentimentAnalysis property={property} />
+        <div className="grid grid-cols-2 gap-2 border-b border-[var(--border)] px-5 py-4 sm:grid-cols-4 sm:px-6">
+          <MetaChip icon={<MapPin className="h-4 w-4" />} label="Location" value={property.location} />
+          <MetaChip icon={<Tag className="h-4 w-4" />} label="Type" value={property.property_type} />
+          <MetaChip icon={<Home className="h-4 w-4" />} label="Area" value={property.area_sqft ? `${property.area_sqft} sq.ft` : '—'} />
+          <MetaChip icon={<Building2 className="h-4 w-4" />} label="Price" value={formatInr(property.price)} />
+        </div>
 
-            <div className="mt-8 flex justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-stone-700 transition-colors hover:bg-stone-100"
-              >
-                Close
-              </button>
-            </div>
+        {property.listing_url && (
+          <div className="border-b border-[var(--border)] px-5 py-3 sm:px-6">
+            <a
+              href={property.listing_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-amber-400 hover:text-amber-300"
+            >
+              View listing on 99acres <ExternalLink className="h-4 w-4" />
+            </a>
           </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6">
+          <SentimentAnalysis property={property} />
         </div>
       </div>
+    </div>
+  );
+}
+
+function MetaChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5">
+      <p className="flex items-center gap-1 text-xs text-[var(--muted)]">
+        {icon}
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-medium leading-snug">{value}</p>
     </div>
   );
 }

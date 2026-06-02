@@ -1,390 +1,424 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowRight,
+  ArrowUpRight,
   Building2,
+  ExternalLink,
+  Filter,
   LayoutGrid,
+  List,
+  MapPin,
   MessageSquare,
   Search,
-  Smile,
-  Star,
-  Tag,
+  Sparkles,
   TrendingUp
 } from 'lucide-react';
 import { PropertyModal } from './components/PropertyModal';
-import type { Property, Review } from './lib/database.types';
-import { getProperties, getReviewsByProperty } from './lib/queries';
+import type { Property } from './lib/database.types';
+import {
+  getProperties,
+  getPropertyAspectSummaries,
+  preloadFullDataset,
+  type PropertyAspectSummary
+} from './lib/queries';
+import { ASPECT_NAMES } from './lib/sentiment';
 
-interface PropertyInsight {
+type SentimentLabel = 'Positive' | 'Neutral' | 'Negative';
+type ViewMode = 'grid' | 'table';
+
+interface PropertyRow {
   property: Property;
-  reviews: Review[];
-  avgReviewScore: number;
-  sentimentLabel: 'Very Positive' | 'Positive' | 'Neutral' | 'Negative';
+  summaries: PropertyAspectSummary[];
+  sentimentLabel: SentimentLabel;
 }
 
-const aspectNames = ['Location', 'Transport', 'Utilities', 'Price'];
+function sentimentLabel(score: number): SentimentLabel {
+  if (score >= 0.5) return 'Positive';
+  if (score >= 0.4) return 'Neutral';
+  return 'Negative';
+}
 
-function App() {
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [propertyInsights, setPropertyInsights] = useState<PropertyInsight[]>([]);
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+function formatInr(value: number) {
+  if (!value) return '—';
+  if (value >= 10_000_000) return `₹${(value / 10_000_000).toFixed(2)} Cr`;
+  if (value >= 100_000) return `₹${(value / 100_000).toFixed(2)} L`;
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
+}
+
+function SentimentPill({ label }: { label: SentimentLabel }) {
+  const styles: Record<SentimentLabel, string> = {
+    Positive: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    Neutral: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    Negative: 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+  };
+  return (
+    <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${styles[label]}`}>
+      {label}
+    </span>
+  );
+}
+
+export default function App() {
+  const [rows, setRows] = useState<PropertyRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [search, setSearch] = useState('');
+  const [aspectFilter, setAspectFilter] = useState<string>('all');
+  const [sentimentFilter, setSentimentFilter] = useState<string>('all');
+  const [view, setView] = useState<ViewMode>('grid');
+  const [selected, setSelected] = useState<Property | null>(null);
 
   useEffect(() => {
-    loadData();
+    (async () => {
+      try {
+        setLoading(true);
+        await preloadFullDataset();
+        const properties = await getProperties();
+        const enriched = await Promise.all(
+          properties.map(async (property) => {
+            const summaries = await getPropertyAspectSummaries(property.id);
+            return {
+              property,
+              summaries,
+              sentimentLabel: sentimentLabel(property.overall_sentiment_score)
+            };
+          })
+        );
+        setRows(enriched);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   useEffect(() => {
-    if (!selectedProperty) return;
-
-    const previousOverflow = document.body.style.overflow;
+    if (!selected) return;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = prev;
     };
-  }, [selectedProperty]);
+  }, [selected]);
 
-  async function loadData() {
-    try {
-      setLoading(true);
-      const propertiesData = await getProperties();
-      setProperties(propertiesData);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((row) => {
+      const matchSearch =
+        !q ||
+        row.property.name.toLowerCase().includes(q) ||
+        row.property.location.toLowerCase().includes(q) ||
+        row.property.property_type.toLowerCase().includes(q);
 
-      const insightRows = await Promise.all(
-        propertiesData.map(async (property) => {
-          const reviews = await getReviewsByProperty(property.id);
-          const avgReviewScore =
-            reviews.length > 0 ? reviews.reduce((sum, review) => sum + review.sentiment_score, 0) / reviews.length : 0;
+      // Filter by aspect-specific sentiment
+      let matchSentiment = true;
+      if (aspectFilter !== 'all' && sentimentFilter !== 'all') {
+        const aspectSummary = row.summaries.find((s) => s.aspect === aspectFilter);
+        matchSentiment = aspectSummary ? aspectSummary.verdict_label === sentimentFilter : false;
+      }
 
-          const sentimentLabel: PropertyInsight['sentimentLabel'] =
-            property.overall_sentiment_score >= 0.8
-              ? 'Very Positive'
-              : property.overall_sentiment_score >= 0.6
-                ? 'Positive'
-                : property.overall_sentiment_score >= 0.4
-                  ? 'Neutral'
-                  : 'Negative';
+      // Filter by aspect presence
+      const matchAspect = aspectFilter === 'all' || row.summaries.some((s) => s.aspect === aspectFilter);
 
-          return {
-            property,
-            reviews,
-            avgReviewScore,
-            sentimentLabel
-          };
-        })
-      );
+      return matchSearch && matchSentiment && matchAspect;
+    });
+  }, [rows, search, sentimentFilter, aspectFilter]);
 
-      setPropertyInsights(insightRows);
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const filteredInsights = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return propertyInsights;
-    return propertyInsights.filter(
-      (insight) => insight.property.name.toLowerCase().includes(term) || insight.property.location.toLowerCase().includes(term)
-    );
-  }, [propertyInsights, searchTerm]);
-
-  const dashboardStats = useMemo(() => {
-    const allReviews = propertyInsights.flatMap((insight) => insight.reviews);
-    const uniqueReviewers = new Set(allReviews.map((review) => review.user_name.toLowerCase())).size;
-
+  const stats = useMemo(() => {
+    const avgScore = rows.length ? rows.reduce((s, r) => s + r.property.overall_sentiment_score, 0) / rows.length : 0;
     return {
-      totalListings: properties.length,
-      uniqueReviewers,
-      aspectCount: aspectNames.length,
-      reviewCount: allReviews.length
+      properties: rows.length,
+      avgScore: Math.round(avgScore * 100),
+      aspects: ASPECT_NAMES.length
     };
-  }, [properties, propertyInsights]);
+  }, [rows]);
 
-  const topProperties = useMemo(
-    () => [...propertyInsights].sort((a, b) => b.property.overall_sentiment_score - a.property.overall_sentiment_score).slice(0, 3),
-    [propertyInsights]
+  const topThree = useMemo(
+    () => [...rows].sort((a, b) => b.property.overall_sentiment_score - a.property.overall_sentiment_score).slice(0, 3),
+    [rows]
   );
 
-  const latestReviews = useMemo(() => {
-    const allReviews = propertyInsights.flatMap((insight) => insight.reviews.map((r) => ({ ...r, propertyName: insight.property.name })));
-    return allReviews.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 4);
-  }, [propertyInsights]);
-
-  const sentimentMix = useMemo(() => {
-    const distribution = {
-      'Very Positive': 0,
-      Positive: 0,
-      Neutral: 0,
-      Negative: 0
-    } satisfies Record<PropertyInsight['sentimentLabel'], number>;
-
-    propertyInsights.forEach((insight) => {
-      distribution[insight.sentimentLabel] += 1;
-    });
-
-    return distribution;
-  }, [propertyInsights]);
-
   return (
-    <div className="min-h-screen w-full bg-stone-100 text-stone-700 selection:bg-amber-200 selection:text-stone-900 font-sans">
-      <header className="sticky top-0 z-20 border-b border-stone-200 bg-stone-100/95 backdrop-blur-lg animate-fade-in">
-        <div className="mx-auto flex h-24 max-w-[1600px] items-center justify-between px-6 lg:px-12">
-          <div className="flex items-center gap-5">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-600 text-white shadow-md shadow-amber-700/20 transition-transform duration-300 hover:scale-105">
-              <Building2 className="h-7 w-7" />
+    <div className="min-h-screen bg-[var(--bg)]">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-32 top-0 h-96 w-96 rounded-full bg-amber-500/10 blur-3xl" />
+        <div className="absolute right-0 top-1/3 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
+      </div>
+
+      <header className="sticky top-0 z-30 border-b border-[var(--border)] glass animate-fade-in">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 shadow-lg glow-amber">
+              <Building2 className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-stone-900">
-                Sentiment<span className="text-amber-700">Intel</span>
+              <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+                Sentiment<span className="text-gradient">Intel</span>
               </h1>
-              <p className="mt-1 text-sm text-stone-500">Real Estate Portfolio Sentiment Operations</p>
+              <p className="text-xs text-[var(--muted)] sm:text-sm">204 properties · 4-aspect NLP intelligence</p>
             </div>
           </div>
-          <div className="hidden cursor-default items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800 sm:flex">
-            Live Insights Active
-            <span className="relative ml-2 flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+          <div className="hidden items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300 sm:flex">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
             </span>
+            Live data connected
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1600px] px-6 py-10 lg:px-12">
+      <main className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {loading ? (
-          <div className="flex animate-fade-in flex-col items-center justify-center py-32">
-            <div className="mb-6 inline-block h-12 w-12 animate-spin rounded-full border-4 border-stone-300 border-t-amber-700" />
-            <p className="text-lg text-stone-500">Aggregating market sentiment...</p>
+          <div className="flex flex-col items-center justify-center py-32 animate-fade-in">
+            <div className="h-14 w-14 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" />
+            <p className="mt-6 text-[var(--muted)]">Loading 204 properties from sentiment dataset…</p>
           </div>
         ) : (
-          <div className="space-y-10">
-            <section className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm" style={{ animationDelay: '0.7s' }}>
-              <div className="mb-8 flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
-                <div>
-                  <h3 className="text-2xl font-bold text-stone-900">Property Intelligence Directory</h3>
-                  <p className="mt-1 text-stone-500">Detailed breakdown of all tracked properties.</p>
-                  <p className="mt-1 text-xs text-stone-400">
-                    Score = average sentiment from submitted reviews for each property.
-                  </p>
+          <div className="space-y-8">
+            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-fade-up">
+              {[
+                { label: 'Properties', value: stats.properties, icon: LayoutGrid, delay: 'stagger-1' },
+                { label: 'Avg sentiment', value: `${stats.avgScore}%`, icon: Sparkles, delay: 'stagger-2' },
+                { label: 'Aspects tracked', value: stats.aspects, icon: MessageSquare, delay: 'stagger-3' }
+              ].map((card) => (
+                <div
+                  key={card.label}
+                  className={`glass rounded-2xl p-5 transition hover:border-amber-500/30 hover:glow-amber animate-fade-up ${card.delay}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-[var(--muted)]">{card.label}</p>
+                    <card.icon className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <p className="mt-2 text-3xl font-bold tabular-nums">{card.value}</p>
                 </div>
-                <div className="relative w-full sm:max-w-md">
-                  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by name or location..."
-                    className="w-full rounded-xl border border-stone-300 bg-white py-3 pl-12 pr-4 text-sm text-stone-900 placeholder-stone-400 outline-none transition-all focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
-                  />
-                </div>
-              </div>
-
-              <div className="overflow-x-auto rounded-xl border border-stone-200">
-                <table className="w-full whitespace-nowrap text-left text-sm">
-                  <thead className="bg-stone-100 text-xs uppercase tracking-wider text-stone-600">
-                    <tr>
-                      <th className="px-6 py-4 font-semibold">Property</th>
-                      <th className="px-6 py-4 font-semibold">Location</th>
-                      <th className="px-6 py-4 font-semibold">Sentiment Status</th>
-                      <th className="px-6 py-4 font-semibold">Review Sentiment Score</th>
-                      <th className="px-6 py-4 text-right font-semibold">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-200 bg-white">
-                    {filteredInsights.map((row) => (
-                      <tr key={row.property.id} className="group transition-colors hover:bg-stone-50">
-                        <td className="px-6 py-5 font-bold text-stone-900">{row.property.name}</td>
-                        <td className="px-6 py-5 text-stone-500">{row.property.location}</td>
-                        <td className="px-6 py-5">
-                          <SentimentBadge label={row.sentimentLabel} />
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-3">
-                            <span className="font-medium text-stone-700">{Math.round(row.avgReviewScore * 100)}%</span>
-                            <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-stone-200 sm:block">
-                              <div className="h-full bg-amber-600" style={{ width: `${Math.round(row.avgReviewScore * 100)}%` }} />
-                            </div>
-                            <span className="hidden text-xs text-stone-400 lg:inline">({row.reviews.length} reviews)</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedProperty(row.property)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-amber-100 px-4 py-2 text-xs font-medium uppercase tracking-wider text-amber-800 transition-all hover:bg-amber-600 hover:text-white"
-                          >
-                            Analyze
-                            <ArrowRight className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              ))}
             </section>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-              <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                <StatCard icon={<LayoutGrid className="h-6 w-6 text-amber-700" />} title="Total Properties" value={dashboardStats.totalListings} />
-              </div>
-              <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                <StatCard
-                  icon={<MessageSquare className="h-6 w-6 text-emerald-700" />}
-                  title="Total Reviews Analyzed"
-                  value={dashboardStats.reviewCount}
-                />
-              </div>
-              <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
-                <StatCard icon={<Tag className="h-6 w-6 text-rose-700" />} title="Aspects Tracked" value={dashboardStats.aspectCount} />
-              </div>
-              <div className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
-                <StatCard icon={<Smile className="h-6 w-6 text-indigo-700" />} title="Global Sentiment" value={`${averageReviewScore(propertyInsights)}%`} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
-              <div
-                className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm xl:col-span-2"
-                style={{ animationDelay: '0.5s' }}
-              >
-                <h3 className="mb-8 flex items-center gap-2 text-xl font-bold text-stone-900">
-                  <TrendingUp className="h-5 w-5 text-amber-700" />
-                  Property Sentiment Leaderboard
-                </h3>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  {topProperties.map((insight, idx) => (
+            {topThree.length > 0 && (
+              <section className="animate-fade-up stagger-2">
+                <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                  <TrendingUp className="h-5 w-5 text-amber-400" />
+                  Top sentiment leaders
+                </h2>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {topThree.map((row, i) => (
                     <button
-                      key={insight.property.id}
+                      key={row.property.id}
                       type="button"
-                      onClick={() => setSelectedProperty(insight.property)}
-                      className="group relative min-h-48 overflow-hidden rounded-xl border border-stone-200 bg-stone-50 p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:border-amber-500 hover:shadow-lg hover:shadow-amber-100/80"
+                      onClick={() => setSelected(row.property)}
+                      className="group glass rounded-2xl p-5 text-left transition hover:-translate-y-1 hover:border-amber-500/40"
                     >
-                      <div className="absolute right-4 top-3 text-xs font-semibold uppercase tracking-wider text-stone-400">Rank</div>
-                      <div className="mb-4 text-3xl font-black text-stone-200">#{idx + 1}</div>
-                      <h4 className="mb-1 text-base font-bold text-stone-900">{insight.property.name}</h4>
-                      <p className="mb-4 text-sm text-stone-500">{insight.property.location}</p>
-                      <div className="flex items-end gap-2">
-                        <span className="text-2xl font-bold text-amber-700">{Math.round(insight.property.overall_sentiment_score * 100)}%</span>
-                        <span className="text-xs uppercase tracking-wide text-stone-500">Confidence</span>
-                      </div>
+                      <span className="text-xs font-bold text-amber-500/80">#{i + 1}</span>
+                      <h3 className="mt-1 font-semibold group-hover:text-amber-300">{row.property.name}</h3>
+                      <p className="text-sm text-[var(--muted)]">{row.property.location}</p>
+                      <p className="mt-3 text-2xl font-bold text-amber-400">
+                        {Math.round(row.property.overall_sentiment_score * 100)}%
+                      </p>
                     </button>
                   ))}
                 </div>
-              </div>
-
-              <section className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm" style={{ animationDelay: '0.55s' }}>
-                <h3 className="mb-4 text-xl font-bold text-stone-900">Overall Sentiment Mix</h3>
-                <SentimentMixChart sentimentMix={sentimentMix} />
               </section>
+            )}
 
-              <div className="animate-slide-up rounded-2xl border border-stone-200 bg-white p-8 shadow-sm xl:col-span-3" style={{ animationDelay: '0.6s' }}>
-                <h3 className="mb-6 text-xl font-bold text-stone-900">Live Review Feed</h3>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  {latestReviews.map((review, i) => (
-                    <article key={i} className="rounded-lg border border-stone-200 bg-stone-50 p-4 transition-colors hover:border-amber-300">
-                      <div className="mb-2 flex items-start justify-between">
-                        <span className="text-sm font-semibold text-stone-800">{review.propertyName}</span>
-                        <div className="flex text-amber-500">
-                          {Array.from({ length: review.rating }).map((_, idx) => (
-                            <Star key={idx} className="h-3 w-3 fill-current" />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="line-clamp-2 text-sm text-stone-500">“{review.review_text}”</p>
-                    </article>
-                  ))}
+            <section className="glass rounded-2xl p-4 sm:p-6 animate-fade-up stagger-3">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--muted)]" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search name, location, BHK type…"
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] py-3 pl-11 pr-4 text-sm outline-none transition focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Filter className="h-4 w-4 text-[var(--muted)]" />
+                  <select
+                    value={aspectFilter}
+                    onChange={(e) => setAspectFilter(e.target.value)}
+                    className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                  >
+                    <option value="all">All aspects</option>
+                    {ASPECT_NAMES.map((a) => (
+                      <option key={a} value={a}>
+                        {a}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={sentimentFilter}
+                    onChange={(e) => setSentimentFilter(e.target.value)}
+                    className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                    disabled={aspectFilter === 'all'}
+                  >
+                    <option value="all">All sentiments</option>
+                    <option value="Positive">Positive</option>
+                    <option value="Neutral">Neutral</option>
+                    <option value="Negative">Negative</option>
+                  </select>
+                  <div className="flex rounded-lg border border-[var(--border)] p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setView('grid')}
+                      className={`rounded-md p-2 ${view === 'grid' ? 'bg-amber-500/20 text-amber-300' : 'text-[var(--muted)]'}`}
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setView('table')}
+                      className={`rounded-md p-2 ${view === 'table' ? 'bg-amber-500/20 text-amber-300' : 'text-[var(--muted)]'}`}
+                    >
+                      <List className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+
+              <p className="mt-4 text-sm text-[var(--muted)]">
+                Showing <strong className="text-white">{filtered.length}</strong> of {rows.length} properties
+              </p>
+            </section>
+
+            {view === 'grid' ? (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {filtered.map((row, idx) => (
+                  <PropertyCard key={row.property.id} row={row} index={idx} onOpen={() => setSelected(row.property)} />
+                ))}
+              </div>
+            ) : (
+              <div className="glass overflow-hidden rounded-2xl animate-fade-up">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="border-b border-[var(--border)] bg-[var(--surface)] text-xs uppercase tracking-wider text-[var(--muted)]">
+                      <tr>
+                        <th className="px-4 py-3">Property</th>
+                        <th className="px-4 py-3">Type</th>
+                        <th className="px-4 py-3">Location</th>
+                        <th className="px-4 py-3">Price</th>
+                        <th className="px-4 py-3">Sentiment</th>
+                        <th className="px-4 py-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((row) => (
+                        <tr key={row.property.id} className="border-b border-[var(--border)]/60 hover:bg-white/[0.02]">
+                          <td className="px-4 py-4 font-medium">{row.property.name}</td>
+                          <td className="px-4 py-4 text-[var(--muted)]">{row.property.property_type}</td>
+                          <td className="px-4 py-4 text-[var(--muted)]">{row.property.location}</td>
+                          <td className="px-4 py-4">{formatInr(row.property.price)}</td>
+                          <td className="px-4 py-4">
+                            <SentimentPill label={row.sentimentLabel} />
+                            <span className="ml-2 text-xs text-[var(--muted)]">
+                              {Math.round(row.property.overall_sentiment_score * 100)}%
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => setSelected(row.property)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/30"
+                            >
+                              Analyze <ArrowUpRight className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {filtered.length === 0 && (
+              <p className="py-16 text-center text-[var(--muted)]">No properties match your filters.</p>
+            )}
           </div>
         )}
       </main>
 
-      {selectedProperty && <PropertyModal property={selectedProperty} onClose={() => setSelectedProperty(null)} />}
+      {selected && <PropertyModal property={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
 
-function StatCard({ icon, title, value }: { icon: ReactNode; title: string; value: string | number }) {
+function PropertyCard({
+  row,
+  index,
+  onOpen
+}: {
+  row: PropertyRow;
+  index: number;
+  onOpen: () => void;
+}) {
+  const delay = `stagger-${(index % 6) + 1}`;
+  const priceAspect = row.summaries.find((s) => s.aspect === 'Price');
+
   return (
-    <div className="group rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-      <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-stone-200 bg-stone-100 transition-all duration-300 group-hover:border-amber-300 group-hover:bg-amber-50">
-          {icon}
-        </div>
+    <article
+      className={`glass group flex flex-col rounded-2xl p-5 transition hover:-translate-y-1 hover:border-amber-500/35 hover:glow-amber animate-fade-up ${delay}`}
+    >
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="mb-1 text-sm font-medium text-stone-500">{title}</p>
-          <p className="text-3xl font-black tracking-tight text-stone-900">{value}</p>
+          <p className="text-xs font-medium text-amber-400/90">{row.property.property_type}</p>
+          <h3 className="mt-1 text-lg font-semibold leading-snug group-hover:text-amber-200">{row.property.name}</h3>
+          <p className="mt-1 flex items-center gap-1 text-sm text-[var(--muted)]">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            {row.property.location}
+          </p>
+        </div>
+        <SentimentPill label={row.sentimentLabel} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+        <div className="rounded-lg bg-[var(--surface)] px-3 py-2">
+          <p className="text-xs text-[var(--muted)]">Price</p>
+          <p className="font-semibold">{formatInr(row.property.price)}</p>
+        </div>
+        <div className="rounded-lg bg-[var(--surface)] px-3 py-2">
+          <p className="text-xs text-[var(--muted)]">Area</p>
+          <p className="font-semibold">{row.property.area_sqft ? `${row.property.area_sqft} sq.ft` : '—'}</p>
         </div>
       </div>
-    </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {row.summaries.map((s) => (
+          <span
+            key={s.aspect}
+            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--muted)]"
+            title={s.verdict_label}
+          >
+            {s.aspect[0]}: {Math.round(s.score * 100)}%
+          </span>
+        ))}
+      </div>
+
+      {priceAspect && (
+        <p className="mt-3 text-xs text-[var(--muted)]">
+          Price verdict: <span className="font-medium text-amber-300">{priceAspect.verdict_label}</span>
+        </p>
+      )}
+
+      <div className="mt-4 flex gap-2">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+        >
+          Deep analysis <ArrowUpRight className="h-4 w-4" />
+        </button>
+        {row.property.listing_url && (
+          <a
+            href={row.property.listing_url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center rounded-xl border border-[var(--border)] px-3 text-[var(--muted)] hover:text-amber-300"
+            title="View on 99acres"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        )}
+      </div>
+    </article>
   );
 }
-
-function SentimentBadge({ label }: { label: PropertyInsight['sentimentLabel'] }) {
-  const styles = {
-    'Very Positive': 'border-emerald-200 bg-emerald-50 text-emerald-800',
-    Positive: 'border-amber-200 bg-amber-50 text-amber-800',
-    Neutral: 'border-stone-300 bg-stone-100 text-stone-700',
-    Negative: 'border-rose-200 bg-rose-50 text-rose-700'
-  };
-
-  return <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider ${styles[label]}`}>{label}</span>;
-}
-
-function averageReviewScore(insights: PropertyInsight[]) {
-  const reviewScores = insights.flatMap((insight) => insight.reviews.map((review) => review.sentiment_score));
-  if (reviewScores.length === 0) return 0;
-  return Math.round((reviewScores.reduce((sum, score) => sum + score, 0) / reviewScores.length) * 100);
-}
-
-function SentimentMixChart({ sentimentMix }: { sentimentMix: Record<PropertyInsight['sentimentLabel'], number> }) {
-  const total = Object.values(sentimentMix).reduce((sum, value) => sum + value, 0);
-  const segments = [
-    { label: 'Very Positive', count: sentimentMix['Very Positive'], color: '#16a34a' },
-    { label: 'Positive', count: sentimentMix.Positive, color: '#d97706' },
-    { label: 'Neutral', count: sentimentMix.Neutral, color: '#64748b' },
-    { label: 'Negative', count: sentimentMix.Negative, color: '#e11d48' }
-  ];
-
-  let start = 0;
-  const gradientStops = segments
-    .map((segment) => {
-      const portion = total > 0 ? (segment.count / total) * 360 : 0;
-      const stop = `${segment.color} ${start}deg ${start + portion}deg`;
-      start += portion;
-      return stop;
-    })
-    .join(', ');
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="mx-auto flex h-52 w-52 items-center justify-center rounded-full" style={{ background: `conic-gradient(${gradientStops || '#e2e8f0 0deg 360deg'})` }}>
-        <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full bg-white shadow-inner">
-          <span className="text-3xl font-black text-stone-900">{total}</span>
-          <span className="text-xs uppercase tracking-widest text-stone-500">Properties</span>
-        </div>
-      </div>
-      <div className="space-y-3">
-        {segments.map((segment) => {
-          const percent = total > 0 ? Math.round((segment.count / total) * 100) : 0;
-          return (
-            <div key={segment.label} className="flex items-center justify-between rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
-              <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: segment.color }} />
-                <span className="text-sm font-medium text-stone-700">{segment.label}</span>
-              </div>
-              <span className="text-sm font-bold text-stone-900">{segment.count} ({percent}%)</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-export default App;
