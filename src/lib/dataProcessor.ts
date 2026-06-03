@@ -89,6 +89,11 @@ export async function ensureFullData(): Promise<FullDataset> {
       .then((data) => {
         fullDataset = data;
         return data;
+      })
+      .catch((error) => {
+        console.warn('Failed to load full dataset, using empty dataset:', error);
+        fullDataset = { properties: [] };
+        return fullDataset;
       });
   }
   return fullLoadPromise;

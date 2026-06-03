@@ -65,7 +65,7 @@ export default function App() {
   const [rows, setRows] = useState<PropertyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [aspectFilter, setAspectFilter] = useState<string>('all');
+  const [aspectFilters, setAspectFilters] = useState<string[]>([]);
   const [sentimentFilter, setSentimentFilter] = useState<string>('all');
   const [view, setView] = useState<ViewMode>('grid');
   const [selected, setSelected] = useState<Property | null>(null);
@@ -115,17 +115,17 @@ export default function App() {
 
       // Filter by aspect-specific sentiment
       let matchSentiment = true;
-      if (aspectFilter !== 'all' && sentimentFilter !== 'all') {
-        const aspectSummary = row.summaries.find((s) => s.aspect === aspectFilter);
-        matchSentiment = aspectSummary ? aspectSummary.verdict_label === sentimentFilter : false;
+      if (aspectFilters.length > 0 && sentimentFilter !== 'all') {
+        const aspectSummaries = row.summaries.filter((s) => aspectFilters.includes(s.aspect));
+        matchSentiment = aspectSummaries.some((s) => s.verdict_label === sentimentFilter);
       }
 
-      // Filter by aspect presence
-      const matchAspect = aspectFilter === 'all' || row.summaries.some((s) => s.aspect === aspectFilter);
+      // Filter by aspect presence (match if property has ANY of the selected aspects)
+      const matchAspect = aspectFilters.length === 0 || row.summaries.some((s) => aspectFilters.includes(s.aspect));
 
       return matchSearch && matchSentiment && matchAspect;
     });
-  }, [rows, search, sentimentFilter, aspectFilter]);
+  }, [rows, search, sentimentFilter, aspectFilters]);
 
   const stats = useMemo(() => {
     const avgScore = rows.length ? rows.reduce((s, r) => s + r.property.overall_sentiment_score, 0) / rows.length : 0;
@@ -247,23 +247,30 @@ export default function App() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Filter className="h-4 w-4 text-[var(--muted)]" />
-                  <select
-                    value={aspectFilter}
-                    onChange={(e) => setAspectFilter(e.target.value)}
-                    className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                  >
-                    <option value="all">All aspects</option>
-                    {ASPECT_NAMES.map((a) => (
-                      <option key={a} value={a}>
-                        {a}
-                      </option>
+                  <div className="flex flex-wrap gap-2">
+                    {ASPECT_NAMES.map((aspect) => (
+                      <label key={aspect} className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm cursor-pointer hover:border-amber-500/30">
+                        <input
+                          type="checkbox"
+                          checked={aspectFilters.includes(aspect)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setAspectFilters([...aspectFilters, aspect]);
+                            } else {
+                              setAspectFilters(aspectFilters.filter((a) => a !== aspect));
+                            }
+                          }}
+                          className="rounded border-[var(--border)] bg-[var(--surface)] text-amber-500 focus:ring-amber-500"
+                        />
+                        {aspect}
+                      </label>
                     ))}
-                  </select>
+                  </div>
                   <select
                     value={sentimentFilter}
                     onChange={(e) => setSentimentFilter(e.target.value)}
                     className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                    disabled={aspectFilter === 'all'}
+                    disabled={aspectFilters.length === 0}
                   >
                     <option value="all">All sentiments</option>
                     <option value="Positive">Positive</option>
