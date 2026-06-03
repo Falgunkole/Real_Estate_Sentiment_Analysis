@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react
 import {
   AlertTriangle,
   Bus,
-  DollarSign,
   Gauge,
   MapPin,
   ThumbsDown,
@@ -30,8 +29,7 @@ interface ReviewWithAspects extends Review {
 const aspectIcons = {
   Location: MapPin,
   Transport: Bus,
-  Utilities: Wrench,
-  Price: DollarSign
+  Utilities: Wrench
 };
 
 export function SentimentAnalysis({ property }: SentimentAnalysisProps) {
@@ -109,7 +107,7 @@ export function SentimentAnalysis({ property }: SentimentAnalysisProps) {
         <p className="mt-1 text-sm text-[var(--muted)]">One ML verdict per aspect — all aspects use Positive / Negative / Neutral.</p>
         <div className="mt-4 space-y-3">
           {sortedSummaries.map((summary, i) => {
-            const Icon = aspectIcons[summary.aspect];
+            const Icon = aspectIcons[summary.aspect as keyof typeof aspectIcons];
             const pct = Math.round(summary.score * 100);
             return (
               <div
@@ -119,7 +117,7 @@ export function SentimentAnalysis({ property }: SentimentAnalysisProps) {
               >
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 text-amber-400" />
+                    {Icon && <Icon className="h-4 w-4 text-amber-400" />}
                     <span className="font-semibold">{summary.aspect}</span>
                     <span className="text-xs text-[var(--muted)]">{summary.review_count} reviews in timeline</span>
                   </div>
@@ -179,13 +177,13 @@ export function SentimentAnalysis({ property }: SentimentAnalysisProps) {
               {review.aspects && review.aspects.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--border)] pt-3">
                   {review.aspects.map((a) => {
-                    const Icon = aspectIcons[a.aspect];
+                    const Icon = aspectIcons[a.aspect as keyof typeof aspectIcons];
                     return (
                       <span
                         key={a.id}
                         className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs"
                       >
-                        <Icon className="h-3 w-3" />
+                        {Icon && <Icon className="h-3 w-3" />}
                         {a.aspect}: {a.sentiment}
                       </span>
                     );

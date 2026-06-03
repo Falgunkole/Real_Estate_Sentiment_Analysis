@@ -40,13 +40,6 @@ function sentimentLabel(score: number): SentimentLabel {
   return 'Negative';
 }
 
-function formatInr(value: number) {
-  if (!value) return '—';
-  if (value >= 10_000_000) return `₹${(value / 10_000_000).toFixed(2)} Cr`;
-  if (value >= 100_000) return `₹${(value / 100_000).toFixed(2)} L`;
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
-}
-
 function SentimentPill({ label }: { label: SentimentLabel }) {
   const styles: Record<SentimentLabel, string> = {
     Positive: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
@@ -113,15 +106,26 @@ export default function App() {
         row.property.location.toLowerCase().includes(q) ||
         row.property.property_type.toLowerCase().includes(q);
 
-      // Filter by aspect-specific sentiment
-      let matchSentiment = true;
-      if (aspectFilters.length > 0 && sentimentFilter !== 'all') {
-        const aspectSummaries = row.summaries.filter((s) => aspectFilters.includes(s.aspect));
-        matchSentiment = aspectSummaries.some((s) => s.verdict_label === sentimentFilter);
-      }
+      // Filter by aspect presence (must have ALL selected aspects)
+      const matchAspect = aspectFilters.length === 0 || aspectFilters.every((aspect) =>
+        row.summaries.some((s) => s.aspect === aspect)
+      );
 
-      // Filter by aspect presence (match if property has ANY of the selected aspects)
-      const matchAspect = aspectFilters.length === 0 || row.summaries.some((s) => aspectFilters.includes(s.aspect));
+      // Filter by sentiment
+      let matchSentiment = true;
+      if (sentimentFilter !== 'all') {
+        if (aspectFilters.length > 0) {
+          // When aspects are selected, ALL selected aspects must match the sentiment
+          matchSentiment = aspectFilters.every((aspect) => {
+            const summary = row.summaries.find((s) => s.aspect === aspect);
+            return summary && summary.verdict_label === sentimentFilter;
+          });
+        } else {
+          // When no aspects are selected, filter by overall property sentiment
+          const label = sentimentLabel(row.property.overall_sentiment_score);
+          matchSentiment = label === sentimentFilter;
+        }
+      }
 
       return matchSearch && matchSentiment && matchAspect;
     });
@@ -314,9 +318,7 @@ export default function App() {
                     <thead className="border-b border-[var(--border)] bg-[var(--surface)] text-xs uppercase tracking-wider text-[var(--muted)]">
                       <tr>
                         <th className="px-4 py-3">Property</th>
-                        <th className="px-4 py-3">Type</th>
                         <th className="px-4 py-3">Location</th>
-                        <th className="px-4 py-3">Price</th>
                         <th className="px-4 py-3">Sentiment</th>
                         <th className="px-4 py-3 text-right">Action</th>
                       </tr>
@@ -325,9 +327,7 @@ export default function App() {
                       {filtered.map((row) => (
                         <tr key={row.property.id} className="border-b border-[var(--border)]/60 hover:bg-white/[0.02]">
                           <td className="px-4 py-4 font-medium">{row.property.name}</td>
-                          <td className="px-4 py-4 text-[var(--muted)]">{row.property.property_type}</td>
                           <td className="px-4 py-4 text-[var(--muted)]">{row.property.location}</td>
-                          <td className="px-4 py-4">{formatInr(row.property.price)}</td>
                           <td className="px-4 py-4">
                             <SentimentPill label={row.sentimentLabel} />
                             <span className="ml-2 text-xs text-[var(--muted)]">
@@ -373,7 +373,6 @@ function PropertyCard({
   onOpen: () => void;
 }) {
   const delay = `stagger-${(index % 6) + 1}`;
-  const priceAspect = row.summaries.find((s) => s.aspect === 'Price');
 
   return (
     <article
@@ -381,25 +380,13 @@ function PropertyCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-medium text-amber-400/90">{row.property.property_type}</p>
-          <h3 className="mt-1 text-lg font-semibold leading-snug group-hover:text-amber-200">{row.property.name}</h3>
+          <h3 className="text-lg font-semibold leading-snug group-hover:text-amber-200">{row.property.name}</h3>
           <p className="mt-1 flex items-center gap-1 text-sm text-[var(--muted)]">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             {row.property.location}
           </p>
         </div>
         <SentimentPill label={row.sentimentLabel} />
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-        <div className="rounded-lg bg-[var(--surface)] px-3 py-2">
-          <p className="text-xs text-[var(--muted)]">Price</p>
-          <p className="font-semibold">{formatInr(row.property.price)}</p>
-        </div>
-        <div className="rounded-lg bg-[var(--surface)] px-3 py-2">
-          <p className="text-xs text-[var(--muted)]">Area</p>
-          <p className="font-semibold">{row.property.area_sqft ? `${row.property.area_sqft} sq.ft` : '—'}</p>
-        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
@@ -413,12 +400,6 @@ function PropertyCard({
           </span>
         ))}
       </div>
-
-      {priceAspect && (
-        <p className="mt-3 text-xs text-[var(--muted)]">
-          Price verdict: <span className="font-medium text-amber-300">{priceAspect.verdict_label}</span>
-        </p>
-      )}
 
       <div className="mt-4 flex gap-2">
         <button

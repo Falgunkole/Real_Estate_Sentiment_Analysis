@@ -1,15 +1,10 @@
-import { Building2, ExternalLink, Home, MapPin, Tag, X } from 'lucide-react';
+import { Building2, ExternalLink, MapPin, X } from 'lucide-react';
 import type { Property } from '../lib/database.types';
 import { SentimentAnalysis } from './SentimentAnalysis';
 
 interface PropertyModalProps {
   property: Property;
   onClose: () => void;
-}
-
-function formatInr(price: number) {
-  if (!price) return 'Price on request';
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price);
 }
 
 export function PropertyModal({ property, onClose }: PropertyModalProps) {
@@ -41,11 +36,8 @@ export function PropertyModal({ property, onClose }: PropertyModalProps) {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 border-b border-[var(--border)] px-5 py-4 sm:grid-cols-4 sm:px-6">
+        <div className="grid grid-cols-2 gap-2 border-b border-[var(--border)] px-5 py-4 sm:grid-cols-2 sm:px-6">
           <MetaChip icon={<MapPin className="h-4 w-4" />} label="Location" value={property.location} />
-          <MetaChip icon={<Tag className="h-4 w-4" />} label="Type" value={property.property_type} />
-          <MetaChip icon={<Home className="h-4 w-4" />} label="Area" value={property.area_sqft ? `${property.area_sqft} sq.ft` : '—'} />
-          <MetaChip icon={<Building2 className="h-4 w-4" />} label="Price" value={formatInr(property.price)} />
         </div>
 
         {property.listing_url && (
