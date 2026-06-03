@@ -21,3 +21,7 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Large data files
+src/data/master_dashboard_data.json
+public/data/properties-full.json
