@@ -8,8 +8,10 @@ import {
   List,
   MapPin,
   MessageSquare,
+  Moon,
   Search,
   Sparkles,
+  Sun,
   TrendingUp
 } from 'lucide-react';
 import { PropertyModal } from './components/PropertyModal';
@@ -21,6 +23,7 @@ import {
   type PropertyAspectSummary
 } from './lib/queries';
 import { ASPECT_NAMES } from './lib/sentiment';
+import { useTheme } from './contexts/ThemeContext';
 
 type SentimentLabel = 'Positive' | 'Neutral' | 'Negative';
 type ViewMode = 'grid' | 'table';
@@ -58,6 +61,7 @@ function SentimentPill({ label }: { label: SentimentLabel }) {
 }
 
 export default function App() {
+  const { theme, toggleTheme } = useTheme();
   const [rows, setRows] = useState<PropertyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -157,12 +161,22 @@ export default function App() {
               <p className="text-xs text-[var(--muted)] sm:text-sm">204 properties · 4-aspect NLP intelligence</p>
             </div>
           </div>
-          <div className="hidden items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300 sm:flex">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-            </span>
-            Live data connected
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2 text-[var(--muted)] transition hover:border-amber-500/30 hover:text-amber-400"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
+            <div className="hidden items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300 sm:flex">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+              </span>
+              Live data connected
+            </div>
           </div>
         </div>
       </header>

@@ -1,0 +1,74 @@
+/* Light Theme Styles - Edit this file to customize light mode appearance */
+
+/* Light mode CSS variables */
+[data-theme='light'] {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --border: #cbd5e1;
+  --text: #0f172a;
+  --muted: #475569;
+  --accent: #f59e0b;
+  --accent-2: #10b981;
+  --danger: #ef4444;
+}
+
+/* Light mode body background - light gray for contrast */
+[data-theme='light'] body {
+  background: #f8fafc;
+}
+
+/* Light mode glass effect - visible cards with borders */
+[data-theme='light'] .glass {
+  background: #ffffff;
+  backdrop-filter: blur(12px);
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Light mode cards - visible with borders */
+[data-theme='light'] article {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] article:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Light mode glow effect - subtle */
+[data-theme='light'] .glow-amber {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+}
+
+/* Light mode shimmer animation - subtle gray */
+[data-theme='light'] .animate-shimmer {
+  background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
+}
+
+/* Light mode scrollbar - clean gray */
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 8px;
+}
+
+/* Fix hover effects to prevent color changes */
+[data-theme='light'] button:hover {
+  transition: none;
+}
+
+[data-theme='light'] .glass:hover {
+  background: #ffffff;
+  border-color: #94a3b8;
+}
+
+/* Ensure text doesn't change color on hover */
+[data-theme='light'] * {
+  color: inherit !important;
+}
+
+[data-theme='light'] button:hover {
+  color: inherit !important;
+}
