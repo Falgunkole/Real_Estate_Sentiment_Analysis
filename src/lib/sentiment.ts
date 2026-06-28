@@ -6,17 +6,18 @@ export type AspectSentimentLabel = StandardSentiment;
 export const ASPECT_NAMES: AspectName[] = ['Location', 'Transport', 'Utilities', 'Price'];
 
 /** Maps raw ML verdict strings to a display label (all aspects use Positive/Negative/Neutral). */
+const VERDICT_TO_SENTIMENT: Record<string, AspectSentimentLabel> = {
+  'Positive/Good': 'Positive',
+  'Value Buy': 'Positive',
+  'Neutral/Average': 'Neutral',
+  'Fairly Priced': 'Neutral',
+  'Negative/Poor': 'Negative',
+  'Overpriced': 'Negative'
+};
+
 export function normalizeVerdict(verdict: string): AspectSentimentLabel {
   const v = verdict.trim();
-  const lower = v.toLowerCase();
-
-  if (lower.includes('positive') || lower.includes('good') || lower.includes('well connected') || lower.includes('value buy')) {
-    return 'Positive';
-  }
-  if (lower.includes('negative') || lower.includes('poor') || lower.includes('issue') || lower.includes('overpric')) {
-    return 'Negative';
-  }
-  return 'Neutral';
+  return VERDICT_TO_SENTIMENT[v] || 'Neutral';
 }
 
 /** Maps verdict + confidence to a 0–1 score for charts and aggregates. */

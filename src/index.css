@@ -15,6 +15,18 @@
     --danger: #f43f5e;
   }
 
+  [data-theme="light"] {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #f1f5f9;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+    --accent: #d97706;
+    --accent-2: #059669;
+    --danger: #e11d48;
+  }
+
   html {
     scroll-behavior: smooth;
   }
@@ -32,6 +44,11 @@
     background: rgba(20, 26, 36, 0.72);
     backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  [data-theme="light"] .glass {
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(0, 0, 0, 0.06);
   }
 
   .text-gradient {

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react
 import {
   AlertTriangle,
   Bus,
+  BadgeDollarSign,
   Gauge,
   MapPin,
   ThumbsDown,
@@ -29,7 +30,8 @@ interface ReviewWithAspects extends Review {
 const aspectIcons = {
   Location: MapPin,
   Transport: Bus,
-  Utilities: Wrench
+  Utilities: Wrench,
+  Price: BadgeDollarSign
 };
 
 export function SentimentAnalysis({ property }: SentimentAnalysisProps) {

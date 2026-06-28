@@ -103,33 +103,48 @@ export default function App() {
       const matchSearch =
         !q ||
         row.property.name.toLowerCase().includes(q) ||
-        row.property.location.toLowerCase().includes(q) ||
-        row.property.property_type.toLowerCase().includes(q);
+        row.property.location.toLowerCase().includes(q);
 
-      // Filter by aspect presence (must have ALL selected aspects)
-      const matchAspect = aspectFilters.length === 0 || aspectFilters.every((aspect) =>
-        row.summaries.some((s) => s.aspect === aspect)
-      );
-
-      // Filter by sentiment
-      let matchSentiment = true;
-      if (sentimentFilter !== 'all') {
-        if (aspectFilters.length > 0) {
-          // When aspects are selected, ALL selected aspects must match the sentiment
-          matchSentiment = aspectFilters.every((aspect) => {
+      let matchAspectAndSentiment = true;
+      if (aspectFilters.length > 0) {
+        if (sentimentFilter !== 'all') {
+          // OR logic: at least one selected aspect must match the sentiment
+          matchAspectAndSentiment = aspectFilters.some((aspect) => {
             const summary = row.summaries.find((s) => s.aspect === aspect);
             return summary && summary.verdict_label === sentimentFilter;
           });
         } else {
-          // When no aspects are selected, filter by overall property sentiment
-          const label = sentimentLabel(row.property.overall_sentiment_score);
-          matchSentiment = label === sentimentFilter;
+          // If no specific sentiment is selected, the presence of the aspect is enough
+          matchAspectAndSentiment = true;
         }
+      } else {
+        // If no aspects are selected, we ignore the sentiment dropdown
+        matchAspectAndSentiment = true;
       }
 
-      return matchSearch && matchSentiment && matchAspect;
+      return matchSearch && matchAspectAndSentiment;
     });
   }, [rows, search, sentimentFilter, aspectFilters]);
+
+  const sentimentCounts = useMemo(() => {
+    let pos = 0, neu = 0, neg = 0;
+    if (aspectFilters.length > 0) {
+      const q = search.trim().toLowerCase();
+      rows.forEach(row => {
+        const matchSearch =
+          !q ||
+          row.property.name.toLowerCase().includes(q) ||
+          row.property.location.toLowerCase().includes(q);
+        
+        if (matchSearch) {
+          if (aspectFilters.some(a => row.summaries.find(s => s.aspect === a)?.verdict_label === 'Positive')) pos++;
+          if (aspectFilters.some(a => row.summaries.find(s => s.aspect === a)?.verdict_label === 'Neutral')) neu++;
+          if (aspectFilters.some(a => row.summaries.find(s => s.aspect === a)?.verdict_label === 'Negative')) neg++;
+        }
+      });
+    }
+    return { pos, neu, neg };
+  }, [rows, aspectFilters, search]);
 
   const stats = useMemo(() => {
     const avgScore = rows.length ? rows.reduce((s, r) => s + r.property.overall_sentiment_score, 0) / rows.length : 0;
@@ -245,7 +260,7 @@ export default function App() {
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search name, location, BHK type…"
+                    placeholder="Search name or location…"
                     className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] py-3 pl-11 pr-4 text-sm outline-none transition focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
                   />
                 </div>
@@ -276,10 +291,10 @@ export default function App() {
                     className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
                     disabled={aspectFilters.length === 0}
                   >
-                    <option value="all">All sentiments</option>
-                    <option value="Positive">Positive</option>
-                    <option value="Neutral">Neutral</option>
-                    <option value="Negative">Negative</option>
+                    <option value="all">{aspectFilters.length === 0 ? "Select aspect first" : "All sentiments"}</option>
+                    <option value="Positive">Positive {aspectFilters.length > 0 ? `(${sentimentCounts.pos})` : ''}</option>
+                    <option value="Neutral">Neutral {aspectFilters.length > 0 ? `(${sentimentCounts.neu})` : ''}</option>
+                    <option value="Negative">Negative {aspectFilters.length > 0 ? `(${sentimentCounts.neg})` : ''}</option>
                   </select>
                   <div className="flex rounded-lg border border-[var(--border)] p-0.5">
                     <button
@@ -297,6 +312,19 @@ export default function App() {
                       <List className="h-4 w-4" />
                     </button>
                   </div>
+                  {(search || aspectFilters.length > 0 || sentimentFilter !== 'all') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearch('');
+                        setAspectFilters([]);
+                        setSentimentFilter('all');
+                      }}
+                      className="rounded-lg px-3 py-2 text-sm text-[var(--muted)] hover:text-amber-300 transition"
+                    >
+                      Clear all
+                    </button>
+                  )}
                 </div>
               </div>
 
