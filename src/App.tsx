@@ -274,7 +274,6 @@ export default function App() {
                     value={sentimentFilter}
                     onChange={(e) => setSentimentFilter(e.target.value)}
                     className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                    disabled={aspectFilters.length === 0}
                   >
                     <option value="all">All sentiments</option>
                     <option value="Positive">Positive</option>
