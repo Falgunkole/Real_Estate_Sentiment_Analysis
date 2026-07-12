@@ -89,7 +89,7 @@ let fullLoadPromise: Promise<FullDataset> | null = null;
 export async function ensureFullData(): Promise<FullDataset> {
   if (fullDataset) return fullDataset;
   if (!fullLoadPromise) {
-    fullLoadPromise = fetch('/data/master_dashboard_data.json')
+    fullLoadPromise = fetch('/data/final_dashboard_data.json')
       .then((r) => {
         if (!r.ok) throw new Error('Failed to load property timelines');
         return r.json() as Promise<FlatRecord[]>;
@@ -261,5 +261,5 @@ export async function hydratePropertyDetails(propertyId: string): Promise<void> 
 export const DATA_STATS = {
   propertyCount: processedProperties.length,
   catalogSource: 'catalog.json',
-  timelinesSource: '/data/master_dashboard_data.json'
+  timelinesSource: '/data/final_dashboard_data.json'
 };

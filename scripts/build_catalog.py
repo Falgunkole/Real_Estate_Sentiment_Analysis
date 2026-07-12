@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MASTER = ROOT / "src" / "data" / "master_dashboard_data.json"
+MASTER = ROOT / "src" / "data" / "final_dashboard_data.json"
 CATALOG = ROOT / "src" / "data" / "catalog.json"
 PUBLIC_FULL = ROOT / "public" / "data" / "properties-full.json"
 

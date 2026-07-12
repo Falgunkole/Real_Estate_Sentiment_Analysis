@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Fetch property metadata from 99acres listing URLs derived from review-ratings URLs.
-Reads master_dashboard_data.json, outputs properties_metadata.json and reorganizes
-master_dashboard_data.json into a deduplicated properties_index.json structure.
+Reads final_dashboard_data.json, outputs properties_metadata.json and reorganizes
+final_dashboard_data.json into a deduplicated properties_index.json structure.
 
 Usage:
   pip install requests
@@ -25,7 +25,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "src" / "data"
-RAW_FILE = DATA_DIR / "master_dashboard_data.json"
+RAW_FILE = DATA_DIR / "final_dashboard_data.json"
 METADATA_FILE = DATA_DIR / "properties_metadata.json"
 INDEX_FILE = DATA_DIR / "properties_index.json"
 
@@ -282,7 +282,7 @@ def main() -> None:
     print(f"Saved organized index ({index['property_count']} properties) -> {INDEX_FILE}")
 
     # Backup raw flat file and write reorganized master (same filename, structured)
-    backup = DATA_DIR / "master_dashboard_data.flat.backup.json"
+    backup = DATA_DIR / "final_dashboard_data.flat.backup.json"
     if not backup.exists():
         import shutil
 
