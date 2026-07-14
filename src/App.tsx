@@ -35,8 +35,13 @@ interface PropertyRow {
 }
 
 function sentimentLabel(score: number): SentimentLabel {
-  if (score >= 0.5) return 'Positive';
-  if (score >= 0.4) return 'Neutral';
+  // Explicitly check for Neutral first!
+  // If the score is between 2.5 and 3.5, it is NEUTRAL.
+  if (score >= 2.5 && score < 3.5) return 'Neutral';
+  
+  // Now check the others
+  if (score >= 3.5) return 'Positive';
+  
   return 'Negative';
 }
 
@@ -72,10 +77,18 @@ export default function App() {
         const enriched = await Promise.all(
           properties.map(async (property) => {
             const summaries = await getPropertyAspectSummaries(property.id);
+            
+            // DEBUGGING: Calculate locally so we can log it
+            const score = property.overall_sentiment_score;
+            const label = sentimentLabel(score);
+            
+            // THIS LOG IS YOUR SOURCE OF TRUTH
+            console.log(`DEBUG: Prop: ${property.name} | Score: ${score} | Label: ${label}`);
+            
             return {
               property,
               summaries,
-              sentimentLabel: sentimentLabel(property.overall_sentiment_score)
+              sentimentLabel: label // We use our calculated label here
             };
           })
         );
@@ -133,12 +146,15 @@ export default function App() {
 
   const stats = useMemo(() => {
     const avgScore = rows.length ? rows.reduce((s, r) => s + r.property.overall_sentiment_score, 0) / rows.length : 0;
+    
+    const normalizedAvg = ((avgScore - 1) / 4) * 100;
+
     return {
-      properties: rows.length,
-      avgScore: Math.round(avgScore * 100),
-      aspects: ASPECT_NAMES.length
-    };
-  }, [rows]);
+    properties: rows.length,
+    avgScore: Math.round(normalizedAvg), // Now displays 0-100%
+    aspects: ASPECT_NAMES.length
+  };
+}, [rows]);
 
   const topThree = useMemo(
     () => [...rows].sort((a, b) => b.property.overall_sentiment_score - a.property.overall_sentiment_score).slice(0, 3),
@@ -230,7 +246,7 @@ export default function App() {
                       <h3 className="mt-1 font-semibold group-hover:text-amber-300">{row.property.name}</h3>
                       <p className="text-sm text-[var(--muted)]">{row.property.location}</p>
                       <p className="mt-3 text-2xl font-bold text-amber-400">
-                        {Math.round(row.property.overall_sentiment_score * 100)}%
+                        {Math.round(((row.property.overall_sentiment_score - 1) / 4) * 100)}%
                       </p>
                     </button>
                   ))}
@@ -330,7 +346,7 @@ export default function App() {
                           <td className="px-4 py-4">
                             <SentimentPill label={row.sentimentLabel} />
                             <span className="ml-2 text-xs text-[var(--muted)]">
-                              {Math.round(row.property.overall_sentiment_score * 100)}%
+                              {Math.round(((row.property.overall_sentiment_score - 1) / 4) * 100)}%
                             </span>
                           </td>
                           <td className="px-4 py-4 text-right">
@@ -389,16 +405,17 @@ function PropertyCard({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {row.summaries.map((s) => (
-          <span
-            key={s.aspect}
-            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--muted)]"
-            title={s.verdict_label}
-          >
-            {s.aspect[0]}: {Math.round(s.score * 100)}%
-          </span>
-        ))}
-      </div>
+      {row.summaries.map((s) => (
+    <span
+      key={s.aspect}
+      className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--muted)]"
+      title={s.verdict_label}
+    >
+      {/* Normalized Math: (score - 1) / 4 maps the 1-5 range to 0-1 range, then * 100 for % */}
+      {s.aspect[0]}: {Math.round(((s.score - 1) / 4) * 100)}%
+    </span>
+  ))}
+</div>
 
       <div className="mt-4 flex gap-2">
         <button

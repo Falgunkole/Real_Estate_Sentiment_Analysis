@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Examine master_dashboard_data.json structure to understand duplication."""
+"""Examine final_dashboard_data.json structure to understand duplication."""
 
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA_FILE = ROOT / "src" / "data" / "master_dashboard_data.json"
+DATA_FILE = ROOT / "src" / "data" / "final_dashboard_data.json"
 
 with open(DATA_FILE, 'r', encoding='utf-8') as f:
     data = json.load(f)

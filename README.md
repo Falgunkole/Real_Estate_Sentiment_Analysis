@@ -6,7 +6,7 @@ NLP sentiment dashboard for **204 Indian properties** (99acres), with **4 aspect
 
 | File | Purpose |
 |------|---------|
-| `src/data/master_dashboard_data.json` | Organized source (204 properties, aspects nested — no 816-row duplication) |
+| `src/data/final_dashboard_data.json` | Organized source (204 properties, aspects nested — no 816-row duplication) |
 | `src/data/catalog.json` | Lightweight bundle for the dashboard (~215 KB) |
 | `public/data/properties-full.json` | Full timelines loaded on demand (~21 MB) |
 | `src/data/properties_metadata.json` | Scraped name, price, area, BHK from 99acres |

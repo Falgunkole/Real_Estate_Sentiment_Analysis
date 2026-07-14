@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Analyze duplication in master_dashboard_data.json."""
+"""Analyze duplication in final_dashboard_data.json."""
 
 import json
 from pathlib import Path
 from collections import Counter
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA_FILE = ROOT / "src" / "data" / "master_dashboard_data.json"
+DATA_FILE = ROOT / "src" / "data" / "final_dashboard_data.json"
 
 with open(DATA_FILE, 'r', encoding='utf-8') as f:
     data = json.load(f)
