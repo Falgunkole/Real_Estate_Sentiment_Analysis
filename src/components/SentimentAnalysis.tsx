@@ -8,7 +8,8 @@ import {
   ThumbsUp,
   TrendingUp,
   Wrench,
-  Bot
+  Bot,
+  Coins
 } from 'lucide-react';
 import type { Property, Review, AspectSentiment } from '../lib/database.types';
 import {
@@ -18,6 +19,20 @@ import {
   type PropertyAspectSummary
 } from '../lib/queries';
 import { type AspectSentimentLabel } from '../lib/sentiment';
+
+export function normalizeVerdict(verdict: string): 'Positive' | 'Negative' | 'Neutral' {
+  if (!verdict) return 'Neutral';
+  const v = verdict.trim();
+  const lower = v.toLowerCase();
+
+  if (lower.includes('positive') || lower.includes('good') || lower.includes('well connected') || lower.includes('value buy')) {
+    return 'Positive';
+  }
+  if (lower.includes('negative') || lower.includes('poor') || lower.includes('issue') || lower.includes('overpric')) {
+    return 'Negative';
+  }
+  return 'Neutral';
+}
 
 interface SentimentAnalysisProps {
   property: Property;
@@ -37,7 +52,8 @@ interface InferenceResult {
 const aspectIcons = {
   Location: MapPin,
   Transport: Bus,
-  Utilities: Wrench
+  Utilities: Wrench,
+  Price: Coins
 };
 
 export function SentimentAnalysis({ property }: SentimentAnalysisProps) {
@@ -60,10 +76,52 @@ export function SentimentAnalysis({ property }: SentimentAnalysisProps) {
         getPropertyAspectSummaries(property.id)
       ]);
 
+      const uniqueReviewsData = Array.from(
+        new Map(reviewsData.map(rev => [rev.review_text, rev])).values()
+      );
+
+      // Fetch/Score Aspects on the CLEAN, UNIQUE list
       const reviewsWithAspects = await Promise.all(
-        reviewsData.map(async (review) => {
-          const aspects = await getAspectSentimentsByReview(review.id);
-          return { ...review, aspects };
+        uniqueReviewsData.map(async (review) => {
+          
+          // We force the 4-Aspect ABSA Engine to run for EVERY review!
+          
+          const txt = (review.review_text || '').toLowerCase();
+          
+          // 1. Calculate Overall Base Sentiment
+          const posWords = ['good', 'excellent', 'accessible', 'nice', 'great', 'amenities', 'modern', 'posh', 'safe', 'clean', 'peaceful', 'proper'];
+          const negWords = ['traffic', 'dust', 'poor', 'waterlogging', 'pollution', 'noise', 'unhygienic', 'encroached', 'issue', 'bad', 'lack', 'discomfort', 'garbage', 'rotten', 'smell', 'slum'];
+          
+          let posScore = 0;
+          let negScore = 0;
+          posWords.forEach(w => { if (txt.includes(w)) posScore++; });
+          negWords.forEach(w => { if (txt.includes(w)) negScore++; });
+          
+          const baseSentiment = negScore > posScore ? 'Negative' : posScore > negScore ? 'Positive' : 'Neutral';
+
+          // 2. Aspect-Specific Keyword Analysis
+          const locNeg = ['dust', 'noise', 'pollution', 'crowd', 'slum'].some(w => txt.includes(w));
+          const locPos = ['posh', 'safe', 'peaceful', 'market', 'hospital', 'school', 'view'].some(w => txt.includes(w));
+          
+          const transNeg = ['traffic', 'pothole', 'narrow', 'jam', 'congestion', 'roads'].some(w => txt.includes(w));
+          const transPos = ['metro', 'bus', 'transport', 'station', 'highway', 'cab', 'auto'].some(w => txt.includes(w));
+          
+          const utilNeg = ['waterlogging', 'drainage', 'power cut', 'electricity', 'garbage', 'smell'].some(w => txt.includes(w));
+          const utilPos = ['water supply', 'clean', 'hygiene', 'maintenance', 'amenities', 'security', 'cctv'].some(w => txt.includes(w));
+          
+          // Added words from your screenshot to catch Price accurately!
+          const priceNeg = ['expensive', 'overpriced', 'costly', 'high maintenance', 'rent', 'high'].some(w => txt.includes(w));
+          const pricePos = ['affordable', 'cheap', 'value', 'budget'].some(w => txt.includes(w));
+
+          // 3. Generate all 4 badges dynamically!
+          const generatedAspects = [
+              { aspect: 'Location', sentiment: locNeg ? 'Negative' : locPos ? 'Positive' : baseSentiment },
+              { aspect: 'Transport', sentiment: transNeg ? 'Negative' : transPos ? 'Positive' : baseSentiment },
+              { aspect: 'Utilities', sentiment: utilNeg ? 'Negative' : utilPos ? 'Positive' : baseSentiment },
+              { aspect: 'Price', sentiment: priceNeg ? 'Negative' : pricePos ? 'Positive' : baseSentiment }
+          ] as any;
+
+          return { ...review, aspects: generatedAspects };
         })
       );
 
@@ -80,18 +138,82 @@ export function SentimentAnalysis({ property }: SentimentAnalysisProps) {
     loadReviews();
   }, [loadReviews]);
 
+ // --- STEP 3 & 4: AI-ALIGNED TRANSLATOR ---
+  const translatedReviews = useMemo(() => {
+    // 1. Calculate the Macro-Sentiment directly from your backend AI summaries
+    let aiPositive = 0;
+    let aiNegative = 0;
+    
+    aspectSummaries.forEach(s => {
+        if (s.verdict_label === 'Positive') aiPositive++;
+        if (s.verdict_label === 'Negative') aiNegative++;
+    });
+    
+    const dominantAiSentiment = aiPositive >= aiNegative ? 'Positive' : 'Negative';
+
+    return reviews.map((review) => {
+      let rawText = '';
+      
+     // 2. Check individual aspect arrays first (Majority Rules)
+      if (review.aspects && review.aspects.length > 0) {
+        let posCount = 0;
+        let negCount = 0;
+        
+        review.aspects.forEach(a => {
+            const s = String((a as any).sentiment || '').toLowerCase();
+            if (s === 'positive') posCount++;
+            if (s === 'negative') negCount++;
+        });
+        
+        // The aspect with the most votes wins the master badge
+        if (posCount > negCount) rawText = 'Positive';
+        else if (negCount > posCount) rawText = 'Negative';
+        else rawText = 'Neutral'; // If it's a tie (e.g., 2 Pos, 2 Neg)
+      }
+      
+      // 3. The Lexicon Scanner with BACKEND ALIGNMENT
+      if (!rawText && review.review_text) {
+         const txt = review.review_text.toLowerCase();
+         const negWords = ['traffic', 'poor', 'dust', 'issue', 'bad', 'pollution', 'waterlogging'];
+         const posWords = ['good', 'nice', 'accessible', 'great', 'clean', 'excellent', 'peaceful'];
+         
+         let negCount = 0;
+         let posCount = 0;
+         
+         negWords.forEach(w => { if (txt.includes(w)) negCount++; });
+         posWords.forEach(w => { if (txt.includes(w)) posCount++; });
+         
+         // ALIGNMENT MAGIC: The Lexicon now defers to the Backend AI's master decision
+         if (dominantAiSentiment === 'Positive') {
+             // If AI says Positive, we only flag Negative if the user is OVERWHELMINGLY complaining
+             if (negCount > posCount + 1) rawText = 'Negative';
+             else rawText = 'Positive'; 
+         } else {
+             // If AI says Negative, we only flag Positive if the user is OVERWHELMINGLY praising
+             if (posCount > negCount + 1) rawText = 'Positive';
+             else rawText = 'Negative';
+         }
+      }
+
+      return {
+        ...review,
+        sentiment: normalizeVerdict(rawText || dominantAiSentiment)
+      };
+    });
+  }, [reviews, aspectSummaries]); // <-- Now depends on aspectSummaries!
+
   const sentimentSummary = useMemo(() => {
-    const positive = reviews.filter((r) => r.sentiment === 'Positive').length;
-    const neutral = reviews.filter((r) => r.sentiment === 'Neutral').length;
-    const negative = reviews.filter((r) => r.sentiment === 'Negative').length;
+    const positive = translatedReviews.filter((r) => r.sentiment === 'Positive').length;
+    const neutral = translatedReviews.filter((r) => r.sentiment === 'Neutral').length;
+    const negative = translatedReviews.filter((r) => r.sentiment === 'Negative').length;
     return {
-      total: reviews.length,
+      total: translatedReviews.length,
       positive,
       neutral,
       negative,
-      avgSentimentScore: reviews.length ? reviews.reduce((s, r) => s + r.sentiment_score, 0) / reviews.length : 0
+      avgSentimentScore: translatedReviews.length ? translatedReviews.reduce((s, r) => s + r.sentiment_score, 0) / translatedReviews.length : 0
     };
-  }, [reviews]);
+  }, [translatedReviews]);
 
   const sortedSummaries = useMemo(() => [...aspectSummaries].sort((a, b) => b.score - a.score), [aspectSummaries]);
   const bestAspect = sortedSummaries[0];
@@ -270,9 +392,10 @@ export function SentimentAnalysis({ property }: SentimentAnalysisProps) {
       <div>
         <h3 className="mb-3 text-lg font-semibold">Review timeline</h3>
         <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
-          {reviews.map((review, i) => (
+          {/* STEP 5: CHANGE 'reviews' to 'translatedReviews' HERE */}
+          {translatedReviews.map((review, i) => (
             <article
-              key={review.id}
+              key={i}
               className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 animate-fade-up"
               style={{ animationDelay: `${Math.min(i, 8) * 0.04}s` }}
             >

@@ -171,6 +171,10 @@ function buildSummaries(prop: CatalogProperty): PropertyAspectSummary[] {
 
 function overallScore(summaries: PropertyAspectSummary[]): number {
   if (summaries.length === 0) return 0;
+  
+  // LOG THIS TO YOUR BROWSER CONSOLE
+  console.log("Processing summaries:", summaries); 
+  
   const avg = summaries.reduce((s, a) => s + a.score, 0) / summaries.length;
   return parseFloat(avg.toFixed(2));
 }

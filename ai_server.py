@@ -76,7 +76,7 @@ except Exception as e:
 @app.get("/api/historical-data")
 async def get_historical_data():
     try:
-        with open("public/data/master_dashboard_data.json", "r") as file:
+        with open("public/data/final_dashboard_data.json", "r") as file:
             return {"status": "success", "data": json.load(file)}
     except FileNotFoundError:
         return {"status": "error", "message": "Dashboard data file not found."}
